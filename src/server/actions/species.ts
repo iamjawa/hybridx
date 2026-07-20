@@ -49,7 +49,13 @@ export async function createSpecies(data: {
     auditLog({ action: "create", entity: "Species", entityId: species.id })
     revalidatePath("/species")
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Unauthorized") {
+      return { success: false, error: "Your session has expired. Please sign out and sign in again." }
+    }
+    if (error?.code === "P2002") {
+      return { success: false, error: "A species with that name or slug already exists" }
+    }
     return { success: false, error: "Failed to create species" }
   }
 }
