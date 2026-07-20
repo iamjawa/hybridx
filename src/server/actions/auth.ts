@@ -12,9 +12,16 @@ export async function signInWithEmail(email: string, password: string): Promise<
   redirect("/dashboard")
 }
 
-export async function signUp(email: string, password: string): Promise<ActionResult> {
+export async function signUp(email: string, password: string, name?: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` } })
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
+  })
   if (error) return { success: false, error: error.message }
   trackEvent(EVENTS.SIGNUP_COMPLETED, { email })
   return { success: true }

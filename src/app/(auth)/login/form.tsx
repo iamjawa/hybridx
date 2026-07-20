@@ -70,7 +70,23 @@ export function LoginForm({ message }: { message?: string }) {
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="breeder@example.com" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <button type="button" onClick={async () => {
+              if (!email) { toast.error("Enter your email first"); return }
+              const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+              )
+              const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/callback`,
+              })
+              if (error) { toast.error(error.message); return }
+              toast.success("Check your email for the reset link")
+            }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Forgot password?
+            </button>
+          </div>
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" />
         </div>
         <Button type="submit" className="w-full" disabled={loading}>

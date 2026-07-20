@@ -17,7 +17,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ setup?:
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-6">
+    <div id="main-content" className="flex min-h-dvh items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">HybridX</h1>

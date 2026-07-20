@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { signUp } from "@/server/actions/auth"
 import { Sprout, Loader2, CheckCircle2, ArrowRight } from "lucide-react"
 import Link from "next/link"
@@ -21,7 +21,7 @@ export default function SignupPage() {
     e.preventDefault()
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return }
     setLoading(true)
-    const result = await signUp(email, password)
+    const result = await signUp(email, password, name)
     setLoading(false)
     if (!result.success) { toast.error(result.error); return }
     setDone(true)
@@ -50,7 +50,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-6">
+    <div id="main-content" className="flex min-h-dvh items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">

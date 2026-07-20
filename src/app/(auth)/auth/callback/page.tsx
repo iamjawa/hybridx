@@ -2,12 +2,9 @@
 
 import { useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
-import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 export default function AuthCallbackPage() {
-  const router = useRouter()
-
   useEffect(() => {
     async function handleCallback() {
       const params = new URLSearchParams(window.location.search)
@@ -24,7 +21,7 @@ export default function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
-          router.push("/dashboard")
+          window.location.replace("/dashboard")
           return
         }
       }
@@ -35,15 +32,15 @@ export default function AuthCallbackPage() {
           refresh_token: hashParams.get("refresh_token") || "",
         })
         if (!error) {
-          router.push("/dashboard")
+          window.location.replace("/dashboard")
           return
         }
       }
 
-      router.push("/login?message=Could not authenticate")
+      window.location.replace("/login?message=Could not authenticate")
     }
     handleCallback()
-  }, [router])
+  }, [])
 
   return (
     <div className="flex min-h-dvh items-center justify-center">
