@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import Link from "next/link"
 import { globalSearch } from "@/server/actions/search"
 import { useRouter } from "next/navigation"
 import { SEED_STAGE_LABELS } from "@/lib/constants"
+import { useDebounce } from "@/hooks/use-debounce"
 
 function ResultCard({ icon: Icon, title, subtitle, href, badges }: { icon: any; title: string; subtitle?: string; href: string; badges?: React.ReactNode }) {
   return (
@@ -48,18 +49,19 @@ export function SearchClient({ initialQuery }: { initialQuery: string }) {
   const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const debouncedQuery = useDebounce(query, 250)
 
-  const handleSearch = useCallback(async (q: string) => {
-    setQuery(q)
-    if (!q.trim()) { setResults(null); return }
+  useEffect(() => {
+    if (!debouncedQuery.trim()) { setResults(null); return }
     setLoading(true)
-    const data = await globalSearch(q)
-    setResults(data)
-    setLoading(false)
+    globalSearch(debouncedQuery).then((data) => {
+      setResults(data)
+      setLoading(false)
+    })
     const params = new URLSearchParams(window.location.search)
-    params.set("q", q)
-    router.replace(`/search?q=${encodeURIComponent(q)}`)
-  }, [router])
+    params.set("q", debouncedQuery)
+    router.replace(`/search?q=${encodeURIComponent(debouncedQuery)}`)
+  }, [debouncedQuery, router])
 
   const totalResults = results
     ? results.plants.length + results.crosses.length + results.seedlings.length + results.seeds.length + results.species.length
@@ -77,7 +79,7 @@ export function SearchClient({ initialQuery }: { initialQuery: string }) {
         <Input
           placeholder='Try "orange", "Peace", "R-AB-24", "fragrant"...'
           value={query}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
           className="pl-9"
           autoFocus
         />

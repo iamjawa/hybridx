@@ -374,11 +374,14 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v ?? "ACTIVE" })}>
-                <SelectTrigger><SelectValue>{["ACTIVE", "INACTIVE", "ARCHIVED"].find(v => v === editForm.status)}</SelectValue></SelectTrigger>
+                <SelectTrigger><SelectValue>{["ACTIVE", "DORMANT", "DECEASED", "RETIRED", "SOLD", "GIFTED"].find(v => v === editForm.status)}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  <SelectItem value="DORMANT">Dormant</SelectItem>
+                  <SelectItem value="DECEASED">Deceased</SelectItem>
+                  <SelectItem value="RETIRED">Retired</SelectItem>
+                  <SelectItem value="SOLD">Sold</SelectItem>
+                  <SelectItem value="GIFTED">Gifted</SelectItem>
                 </SelectContent>
               </Select>
             </div>

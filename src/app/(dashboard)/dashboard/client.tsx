@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import {
   Leaf, GitMerge, Sprout, Flower2, Database, Star,
   CalendarClock, Eye, FlaskConical, TrendingUp,
@@ -292,22 +293,14 @@ export function DashboardClient({ stats, analytics }: any) {
             <CardContent>
               {analytics.months?.length > 0 ? (
                 <div className="h-48">
-                  <div className="flex items-end gap-2 h-40">
-                    {analytics.months.map((m: any) => {
-                      const max = Math.max(...analytics.months.map((x: any) => x.count), 1)
-                      const height = (m.count / max) * 100
-                      return (
-                        <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-xs text-muted-foreground">{m.count}</span>
-                          <div
-                            className="w-full rounded-t bg-primary/60 hover:bg-primary/80 transition-colors"
-                            style={{ height: `${Math.max(height, 2)}%` }}
-                          />
-                          <span className="text-[10px] text-muted-foreground">{m.month}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics.months} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip cursor={{ fill: "var(--color-muted)" }} contentStyle={{ fontSize: 12, borderRadius: "var(--radius)", border: "1px solid var(--color-border)" }} />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--color-primary)" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">No crosses this year</p>

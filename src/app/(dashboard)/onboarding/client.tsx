@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
 import Link from "next/link"
 import { Sprout, Leaf, GitMerge, Target, CheckCircle2, ArrowRight, Loader2 } from "lucide-react"
 import { createSpecies } from "@/server/actions/species"
@@ -211,18 +212,18 @@ export function OnboardingClient({ species: existingSpecies }: any) {
                 <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="e.g. My ideal variety" autoFocus />
               </div>
               <p className="text-xs text-muted-foreground">Drag the sliders to set trait importance</p>
-              <div className="space-y-3">
-                <div>
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span>Colour</span><span>{goalColour}%</span></div>
-                  <input type="range" min="0" max="100" value={goalColour} onChange={(e) => setGoalColour(e.target.value)} className="w-full" />
+                  <Slider value={[parseInt(goalColour)]} onValueChange={(v) => setGoalColour(String(Array.isArray(v) ? v[0] : v))} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span>Fragrance</span><span>{goalFragrance}%</span></div>
-                  <input type="range" min="0" max="100" value={goalFragrance} onChange={(e) => setGoalFragrance(e.target.value)} className="w-full" />
+                  <Slider value={[parseInt(goalFragrance)]} onValueChange={(v) => setGoalFragrance(String(Array.isArray(v) ? v[0] : v))} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span>Health</span><span>{goalHealth}%</span></div>
-                  <input type="range" min="0" max="100" value={goalHealth} onChange={(e) => setGoalHealth(e.target.value)} className="w-full" />
+                  <Slider value={[parseInt(goalHealth)]} onValueChange={(v) => setGoalHealth(String(Array.isArray(v) ? v[0] : v))} />
                 </div>
               </div>
               <Button onClick={handleStep4} disabled={loading || !goalName.trim()} className="w-full">
