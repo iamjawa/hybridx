@@ -8,7 +8,6 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const satoshi = localFont({
   src: "../../public/fonts/Satoshi-Variable.woff2",
   variable: "--font-heading",
-  weight: "300 900",
 })
 
 export const metadata: Metadata = {
