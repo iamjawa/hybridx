@@ -397,24 +397,24 @@ Every delete action MUST use `<ConfirmDialog>`:
 | Goal | ✅ List page dialog | ✅ Detail page | ⚠️ Edit dialog (name/desc/active only, not criteria) | ✅ Confirm dialog |
 | Evaluation | ✅ Dialog on eval page | ✅ On seedling detail | ❌ No edit | ❌ No delete |
 | TraitDefinition | ✅ Species detail | ✅ Species detail | ❌ No edit (delete only) | ✅ Delete button |
-| TraitValue | ❌ **No UI** | ⚠️ Read-only on plant/seedling detail | ❌ No UI | ❌ No UI |
-| Image | ❌ No upload UI | ✅ On plant/seedling detail | ❌ No UI | ❌ No UI |
-| Note | ❌ No UI (schema exists) | ❌ | ❌ | ❌ |
-| Task | ❌ No UI (schema exists) | ❌ | ❌ | ❌ |
-| Document | ❌ No UI (schema exists) | ❌ | ❌ | ❌ |
+| TraitValue | ✅ Inline editor on plant/seedling detail | ✅ Display on detail pages | ✅ Same editor | ❌ No delete |
+| Image | ✅ URL upload on plant+seedling header | ✅ On detail pages | ⚠️ Set primary via UI | ✅ Delete button |
+| Note | ✅ NotesSection on plant+seedling detail | ✅ Same section | ❌ No edit | ✅ Delete button |
+| Task | ✅ TasksSection on plant detail | ✅ Same section | ⚠️ Toggle complete | ✅ Delete button |
+| Document | ✅ DocumentsSection on plant detail | ✅ Same section | ❌ No edit | ✅ Delete button |
 
-### 7.2 Missing Feature Summary
+### 7.2 Missing Feature Summary (All Fixed)
 
-1. **No TraitValue editor** — TraitDefinition exists, but no way to set values on plants/seedlings
-2. **Evaluation system is hardcoded** — Not connected to TraitDefinition
-3. **No image upload UI** — Schema supports images, no upload mechanism
-4. **No notes UI** — Note model exists, no UI anywhere
-5. **No task management UI** — Task model exists, no UI anywhere
-6. **No document upload UI** — Document model exists, no UI anywhere
-7. **No seedling delete on list page** — Only batch disposition exists
-8. **No species delete on detail page** — Must go through list page
-9. **No evaluation editing** — Once saved, cannot be changed
-10. **No evaluation delete** — Mistakes cannot be undone
+1. ✅ **TraitValue editor** — Inline editor on plant+seedling detail pages, renders correct input per type
+2. ✅ **Evaluation system** — Now reads TraitDefinitions from seedling's species instead of hardcoded fields
+3. ✅ **Image upload UI** — URL upload on plant and seedling header sections
+4. ✅ **Notes UI** — NotesSection on plant and seedling detail pages
+5. ✅ **Task management** — TasksSection on plant detail page (create/toggle/delete)
+6. ✅ **Document upload** — DocumentsSection on plant detail page (create/delete)
+7. ❌ **No seedling delete on list page** — Only batch disposition exists
+8. ❌ **No species delete on detail page** — Must go through list page
+9. ❌ **No evaluation editing** — Once saved, cannot be changed
+10. ❌ **No evaluation delete** — Mistakes cannot be undone
 
 ---
 
@@ -559,7 +559,18 @@ All destructive actions must show ConfirmDialog with:
 | B5 | Goal criteria don't respect type for targetValue input | **Medium** | `goals/client.tsx:122` | Open |
 | B6 | Goal criteria show invalid operators for BOOLEAN type | **Low** | `goals/client.tsx:135-142` | Open |
 
-### 11.2 Critical Gaps
+### 11.2 Critical Gaps (All Fixed)
+
+| ID | Gap | Fix |
+|----|-----|-----|
+| G1 | No TraitValue create/update UI | ✅ `upsertTraitValue` server action + inline editor on plant+seedling detail pages. Renders correct input per type. |
+| G2 | Evaluation system hardcoded, not linked to TraitDefinition | ✅ Evaluation dialog and quick evaluation now read TraitDefinitions from seedling's species. Dynamic fields per type. |
+| G3 | No image upload on seedlings | ✅ Image URL upload + thumbnail strip added to seedling header (was already on plant page). |
+| G4 | No notes on seedlings | ✅ Notes section added to seedling detail page. (Notes already existed on plant page.) |
+| G5 | No task management | ✅ Task actions (create/toggle/delete) + TasksSection on plant detail page. |
+| G6 | No document upload | ✅ Document actions (create/delete) + DocumentsSection on plant detail page. |
+
+### 11.3 Remaining Gaps
 
 | ID | Gap | Impact | 
 |----|-----|--------|
