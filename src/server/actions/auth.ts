@@ -50,3 +50,21 @@ export async function signInWithGoogle(): Promise<ActionResult<{ url: string }>>
 
   return { success: true, data: { url } }
 }
+
+export async function syncCurrentUser(): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+    
+    const { prisma } = await import("@/lib/prisma")
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: { email: user.email ?? "", name: user.user_metadata?.full_name ?? user.email ?? "" },
+      create: { id: user.id, email: user.email ?? "", name: user.user_metadata?.full_name ?? user.email ?? "" },
+    })
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
