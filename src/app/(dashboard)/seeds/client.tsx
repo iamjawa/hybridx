@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Database, Plus, Search, Calendar, Loader2 } from "lucide-react"
+import { Database, Plus, Search, Calendar, Loader2, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { getSeeds, createSeed, advanceSeedStage } from "@/server/actions/seeds"
+import { getSeeds, createSeed, advanceSeedStage, deleteSeed } from "@/server/actions/seeds"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { PaginationBar } from "@/components/ui/pagination-bar"
 import { EmptyState } from "@/components/ui/empty-state"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SEED_STAGE_LABELS } from "@/lib/constants"
 
 const stageOrder = ["HARVESTED", "CLEANED", "STORED", "STRATIFYING", "COLD_STRATIFYING", "WARM_STRATIFYING", "GERMINATING", "GERMINATED", "FAILED"]
@@ -26,7 +27,7 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
   const [stageFilter, setStageFilter] = useState(initialStage)
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ batchNumber: "", crossId: "", speciesId: "", totalCount: "", notes: "" })
+  const [form, setForm] = useState({ batchNumber: "", crossId: "", speciesId: "", totalCount: "", notes: "", harvestDate: "", viableCount: "", storageCondition: "" })
   const [saving, setSaving] = useState(false)
 
   function updateUrl(params: Record<string, string>) {
@@ -57,12 +58,15 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
         batchNumber: form.batchNumber || undefined,
         speciesId: form.speciesId || undefined,
         totalCount: form.totalCount ? parseInt(form.totalCount) : 0,
+        harvestDate: form.harvestDate ? new Date(form.harvestDate) : undefined,
+        viableCount: form.viableCount ? parseInt(form.viableCount) : undefined,
+        storageCondition: form.storageCondition || undefined,
         notes: form.notes || undefined,
       })
       if (!result.success) { toast.error(result.error); return }
       toast.success("Seed batch created")
       setOpen(false)
-      setForm({ batchNumber: "", crossId: "", speciesId: "", totalCount: "", notes: "" })
+      setForm({ batchNumber: "", crossId: "", speciesId: "", totalCount: "", notes: "", harvestDate: "", viableCount: "", storageCondition: "" })
       const seedsResult = await getSeeds()
       setSeeds(seedsResult.seeds)
       router.refresh()
@@ -75,6 +79,15 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
     setPage(newPage)
     const result = await getSeeds({ search: search || undefined, stage: stageFilter || undefined, page: newPage })
     setSeeds(result.seeds)
+  }
+
+  async function handleDelete(id: string) {
+    const result = await deleteSeed(id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Seed batch deleted")
+    const seedsResult = await getSeeds({ search: search || undefined, stage: stageFilter || undefined })
+    setSeeds(seedsResult.seeds)
+    router.refresh()
   }
 
   async function handleAdvance(id: string, stage: string) {
@@ -117,6 +130,18 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
               <div className="space-y-2">
                 <Label htmlFor="count">Total Seeds</Label>
                 <Input id="count" type="number" value={form.totalCount} onChange={(e) => setForm({ ...form, totalCount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="harvestDate">Harvest Date</Label>
+                <Input id="harvestDate" type="date" value={form.harvestDate} onChange={(e) => setForm({ ...form, harvestDate: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="viableCount">Viable Count</Label>
+                <Input id="viableCount" type="number" value={form.viableCount} onChange={(e) => setForm({ ...form, viableCount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="storageCondition">Storage Condition</Label>
+                <Input id="storageCondition" value={form.storageCondition} onChange={(e) => setForm({ ...form, storageCondition: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
@@ -172,6 +197,20 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
                         <p className="font-medium truncate">{seed.batchNumber ?? "Unnamed batch"}</p>
                         <p className="text-sm text-muted-foreground">{seed.totalCount} seeds</p>
                       </div>
+                      <ConfirmDialog
+                        title="Delete seed batch?"
+                        description={`This will permanently delete this seed batch and all associated data. This action cannot be undone.`}
+                        onConfirm={() => handleDelete(seed.id)}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </ConfirmDialog>
                       <Badge className={
                         stage === "GERMINATED" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" :
                         stage === "FAILED" ? "border-red-500/30 bg-red-500/10 text-red-500" :

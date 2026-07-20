@@ -6,11 +6,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Target, Leaf, Sprout, RefreshCw, Trash2 } from "lucide-react"
+import { Target, Leaf, Sprout, RefreshCw, Trash2, Pencil } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import Link from "next/link"
-import { runGoalMatching, deleteGoal, getGoalById } from "@/server/actions/goals"
+import { runGoalMatching, deleteGoal, getGoalById, updateGoal } from "@/server/actions/goals"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -26,6 +31,26 @@ export function GoalDetailClient({ goal: initialGoal }: any) {
   const router = useRouter()
   const [goal, setGoal] = useState(initialGoal)
   const [running, setRunning] = useState(false)
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: goal.name,
+    description: goal.description ?? "",
+    isActive: goal.isActive ?? true,
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updateGoal(goal.id, editForm)
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Goal updated")
+    setEditOpen(false)
+    const updated = await getGoalById(goal.id)
+    if (updated) setGoal(updated)
+    router.refresh()
+  }
 
   async function handleRunMatching(entityType: "plant" | "seedling") {
     setRunning(true)
@@ -62,15 +87,20 @@ export function GoalDetailClient({ goal: initialGoal }: any) {
           </div>
           {goal.description && <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>}
         </div>
-        <ConfirmDialog
-          title="Delete goal?"
-          description="This will permanently remove this goal and all associated scores. This action cannot be undone."
-          onConfirm={handleDelete}
-        >
-          <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive">
-            <Trash2 className="size-4" />
+        <div className="flex gap-1 shrink-0">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" />
           </Button>
-        </ConfirmDialog>
+          <ConfirmDialog
+            title="Delete goal?"
+            description="This will permanently remove this goal and all associated scores. This action cannot be undone."
+            onConfirm={handleDelete}
+          >
+            <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive">
+              <Trash2 className="size-4" />
+            </Button>
+          </ConfirmDialog>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -184,6 +214,29 @@ export function GoalDetailClient({ goal: initialGoal }: any) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Goal</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea id="edit-description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="edit-isActive" checked={editForm.isActive} onCheckedChange={(v: boolean) => setEditForm({ ...editForm, isActive: v })} />
+              <Label htmlFor="edit-isActive">Active</Label>
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

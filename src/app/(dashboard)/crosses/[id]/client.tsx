@@ -1,21 +1,63 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { GitMerge, Sprout, Calendar, Hash, Database } from "lucide-react"
+import { GitMerge, Sprout, Calendar, Hash, Database, Pencil, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { createSeed } from "@/server/actions/seeds"
+import { updateCross, deleteCross } from "@/server/actions/crosses"
 import { toast } from "sonner"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export function CrossDetailClient({ cross }: any) {
   const router = useRouter()
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    crossNumber: cross.crossNumber ?? "",
+    plannedDate: cross.plannedDate ? new Date(cross.plannedDate).toISOString().split("T")[0] : "",
+    method: cross.method ?? "",
+    notes: cross.notes ?? "",
+    seedCount: cross.seedCount?.toString() ?? "",
+    isolation: cross.isolation ?? "",
+    weather: cross.weather ?? "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updateCross(cross.id, {
+      ...editForm,
+      plannedDate: editForm.plannedDate ? new Date(editForm.plannedDate) : undefined,
+      seedCount: editForm.seedCount ? parseInt(editForm.seedCount) : undefined,
+    })
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Cross updated")
+    setEditOpen(false)
+    router.refresh()
+  }
+
+  async function handleDeleteCross() {
+    const result = await deleteCross(cross.id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Cross deleted")
+    router.push("/crosses")
+  }
+
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: "Crosses", href: "/crosses" }, { label: "Cross detail" }]} />
+      <Breadcrumbs items={[{ label: "Crosses", href: "/crosses" }, { label: cross.crossNumber ?? `${cross.seedParent?.name ?? "?"} × ${cross.pollenParent?.name ?? "?"}` }]} />
       <div className="flex items-center gap-4">
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
           <GitMerge className="size-6 text-primary" />
@@ -31,6 +73,14 @@ export function CrossDetailClient({ cross }: any) {
             {cross.crossNumber ?? "No number"}{cross.species ? ` · ${cross.species.name}` : ""}
           </p>
         </div>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+          <Pencil className="size-4" />
+        </Button>
+        <ConfirmDialog title="Delete cross?" description="This will permanently remove this cross and all associated data." onConfirm={handleDeleteCross}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="size-4" />
+          </Button>
+        </ConfirmDialog>
         <Button
           variant="outline" size="sm"
           onClick={async () => {
@@ -170,6 +220,55 @@ export function CrossDetailClient({ cross }: any) {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Cross</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-crossNumber">Cross Number</Label>
+              <Input id="edit-crossNumber" value={editForm.crossNumber} onChange={(e) => setEditForm({ ...editForm, crossNumber: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-plannedDate">Planned Date</Label>
+              <Input id="edit-plannedDate" type="date" value={editForm.plannedDate} onChange={(e) => setEditForm({ ...editForm, plannedDate: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Method</Label>
+              <Select value={editForm.method} onValueChange={(v) => setEditForm({ ...editForm, method: v ?? "" })}>
+                <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUAL">Manual</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="CONTROLLED">Controlled</SelectItem>
+                  <SelectItem value="HAND">Hand</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea id="edit-notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-seedCount">Seed Count</Label>
+                <Input id="edit-seedCount" type="number" value={editForm.seedCount} onChange={(e) => setEditForm({ ...editForm, seedCount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-isolation">Isolation</Label>
+                <Input id="edit-isolation" value={editForm.isolation} onChange={(e) => setEditForm({ ...editForm, isolation: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-weather">Weather</Label>
+              <Input id="edit-weather" value={editForm.weather} onChange={(e) => setEditForm({ ...editForm, weather: e.target.value })} />
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Flower2, Plus, Loader2 } from "lucide-react"
+import { Flower2, Plus, Loader2, Search } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { createSpecies } from "@/server/actions/species"
@@ -18,7 +18,8 @@ import { toast } from "sonner"
 export function SpeciesClient({ species }: any) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: "", slug: "", description: "" })
+  const [search, setSearch] = useState("")
+  const [form, setForm] = useState({ name: "", slug: "", description: "", generationLabels: "", flowerFormOptions: "" })
   const [saving, setSaving] = useState(false)
 
   async function handleCreate() {
@@ -28,11 +29,13 @@ export function SpeciesClient({ species }: any) {
         name: form.name,
         slug: form.slug.toLowerCase().replace(/\s+/g, "-"),
         description: form.description || undefined,
+        generationLabels: form.generationLabels ? form.generationLabels.split(",").map(s => s.trim()) : undefined,
+        flowerFormOptions: form.flowerFormOptions ? form.flowerFormOptions.split(",").map(s => s.trim()) : undefined,
       })
       if (!result.success) { toast.error(result.error); return }
       toast.success("Species created")
       setOpen(false)
-      setForm({ name: "", slug: "", description: "" })
+      setForm({ name: "", slug: "", description: "", generationLabels: "", flowerFormOptions: "" })
       router.refresh()
     } finally {
       setSaving(false)
@@ -66,6 +69,14 @@ export function SpeciesClient({ species }: any) {
                 <Label htmlFor="desc">Description</Label>
                 <Textarea id="desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
+              <div className="space-y-2">
+                <Label>Generation Labels (comma-separated)</Label>
+                <Input value={form.generationLabels} onChange={(e) => setForm({ ...form, generationLabels: e.target.value })} placeholder="F1, F2, F3, BC1, BC2" />
+              </div>
+              <div className="space-y-2">
+                <Label>Flower Forms (comma-separated)</Label>
+                <Input value={form.flowerFormOptions} onChange={(e) => setForm({ ...form, flowerFormOptions: e.target.value })} placeholder="Single, Double, Cupped..." />
+              </div>
               <Button type="submit" disabled={saving} className="w-full">
                 {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
                 {saving ? "Saving..." : "Create Species"}
@@ -75,7 +86,14 @@ export function SpeciesClient({ species }: any) {
         </Dialog>
       </div>
 
-      {species.length === 0 ? (
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search species..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
+      {(() => {
+        const filtered = species.filter((s: any) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
+        return filtered.length === 0 ? (
         <EmptyState
           icon={Flower2}
           title="No species configured"
@@ -88,7 +106,7 @@ export function SpeciesClient({ species }: any) {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {species.map((s: any) => (
+          {filtered.map((s: any) => (
             <Link key={s.id} href={`/species/${s.id}`}>
               <Card className="h-full transition-colors hover:border-border/80">
                 <CardContent className="p-5">
@@ -112,7 +130,7 @@ export function SpeciesClient({ species }: any) {
             </Link>
           ))}
         </div>
-      )}
+      )})()}
     </div>
   )
 }

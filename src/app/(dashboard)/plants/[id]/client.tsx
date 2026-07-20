@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,15 +8,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Leaf, GitMerge, Sprout, MapPin, Calendar, Award,
-  ImageIcon, Plus, Trash2, Star, Clock, FlaskConical, Heart,
+  ImageIcon, Plus, Pencil, Trash2, Star, Clock, FlaskConical, Heart,
   Crosshair, Ruler, Activity, QrCode,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { addImage, setPrimaryImage, deleteImage } from "@/server/actions/images"
+import { updatePlant, deletePlant } from "@/server/actions/plants"
+import { getSpecies } from "@/server/actions/species"
 import { createNote, deleteNote } from "@/server/actions/notes"
 import { PedigreeTree } from "@/components/plant/pedigree-tree"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -31,6 +35,42 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
   const [plant, setPlant] = useState(initialPlant)
 
   function reload() { router.refresh() }
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: plant.name,
+    varietyName: plant.varietyName ?? "",
+    speciesId: plant.speciesId ?? "",
+    description: plant.description ?? "",
+    origin: plant.origin ?? "",
+    year: plant.year?.toString() ?? "",
+    colour: plant.colour ?? "",
+    fragrance: plant.fragrance ?? "",
+    diseaseResistance: plant.diseaseResistance ?? "",
+    repeatFlowering: plant.repeatFlowering ?? false,
+    status: plant.status ?? "ACTIVE",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [species, setSpecies] = useState<any[]>([])
+
+  useEffect(() => { getSpecies().then(setSpecies) }, [])
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updatePlant(plant.id, editForm)
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Plant updated")
+    setEditOpen(false)
+    router.refresh()
+  }
+
+  async function handleDeletePlant() {
+    const result = await deletePlant(plant.id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Plant deleted")
+    router.push("/plants")
+  }
 
   const allSeedlings = [...(plant.seedlingsFrom ?? []), ...(plant.seedlingCrosses ?? [])]
 
@@ -82,6 +122,14 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
                   {plant.description && <p className="text-sm text-muted-foreground/80 mt-2 max-w-xl">{plant.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+                    <Pencil className="size-4" />
+                  </Button>
+                  <ConfirmDialog title="Delete plant?" description="This will permanently remove this plant and all associated data." onConfirm={handleDeletePlant}>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </ConfirmDialog>
                   <Link href={`/crosses/new?seedParentId=${plant.id}`}>
                     <Button variant="outline" size="sm"><GitMerge className="mr-1.5 size-3.5" />Cross</Button>
                   </Link>
@@ -266,6 +314,80 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
           </div>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Plant</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-varietyName">Variety Name</Label>
+              <Input id="edit-varietyName" value={editForm.varietyName} onChange={(e) => setEditForm({ ...editForm, varietyName: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-species">Species</Label>
+              <Select value={editForm.speciesId} onValueChange={(v) => setEditForm({ ...editForm, speciesId: v ?? "" })}>
+                <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {species.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea id="edit-description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-origin">Origin</Label>
+                <Input id="edit-origin" value={editForm.origin} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-year">Year</Label>
+                <Input id="edit-year" type="number" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-colour">Colour</Label>
+                <Input id="edit-colour" value={editForm.colour} onChange={(e) => setEditForm({ ...editForm, colour: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-fragrance">Fragrance</Label>
+                <Input id="edit-fragrance" value={editForm.fragrance} onChange={(e) => setEditForm({ ...editForm, fragrance: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-diseaseResistance">Disease Resistance</Label>
+              <Input id="edit-diseaseResistance" value={editForm.diseaseResistance} onChange={(e) => setEditForm({ ...editForm, diseaseResistance: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="edit-repeatFlowering" checked={editForm.repeatFlowering} onCheckedChange={(v: boolean) => setEditForm({ ...editForm, repeatFlowering: v })} />
+              <Label htmlFor="edit-repeatFlowering">Repeat Flowering</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v ?? "ACTIVE" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

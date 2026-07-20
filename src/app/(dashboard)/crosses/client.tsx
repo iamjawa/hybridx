@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GitMerge, Plus, Loader2 } from "lucide-react"
+import { GitMerge, Plus, Search, Loader2 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { getCrosses, createCross } from "@/server/actions/crosses"
@@ -19,10 +20,24 @@ import { PaginationBar } from "@/components/ui/pagination-bar"
 export function CrossesClient({ initialCrosses, total, pages, species, plants }: any) {
   const router = useRouter()
   const [crosses, setCrosses] = useState(initialCrosses)
+  const [search, setSearch] = useState("")
+  const [speciesFilter, setSpeciesFilter] = useState("")
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ speciesId: "", seedParentId: "", pollenParentId: "", crossNumber: "", method: "MANUAL", notes: "" })
+  const [form, setForm] = useState({ speciesId: "", seedParentId: "", pollenParentId: "", crossNumber: "", method: "MANUAL", notes: "", plannedDate: "" })
   const [saving, setSaving] = useState(false)
+
+  async function handleSearch(query: string) {
+    setSearch(query)
+    const result = await getCrosses({ search: query, speciesId: speciesFilter || undefined })
+    setCrosses(result.crosses)
+  }
+
+  async function handleSpeciesFilter(value: string | null) {
+    setSpeciesFilter(value ?? "")
+    const result = await getCrosses({ speciesId: value || undefined, search: search || undefined })
+    setCrosses(result.crosses)
+  }
 
   async function handleCreate() {
     setSaving(true)
@@ -34,11 +49,12 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
         crossNumber: form.crossNumber || undefined,
         method: form.method,
         notes: form.notes || undefined,
+        plannedDate: form.plannedDate ? new Date(form.plannedDate) : undefined,
       })
       if (!result.success) { toast.error(result.error); return }
       toast.success("Cross created")
       setOpen(false)
-      setForm({ speciesId: "", seedParentId: "", pollenParentId: "", crossNumber: "", method: "MANUAL", notes: "" })
+      setForm({ speciesId: "", seedParentId: "", pollenParentId: "", crossNumber: "", method: "MANUAL", notes: "", plannedDate: "" })
       const crossesResult = await getCrosses()
       setCrosses(crossesResult.crosses)
       router.refresh()
@@ -49,7 +65,7 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
 
   async function handlePageChange(newPage: number) {
     setPage(newPage)
-    const result = await getCrosses({ page: newPage })
+    const result = await getCrosses({ search: search || undefined, speciesId: speciesFilter || undefined, page: newPage })
     setCrosses(result.crosses)
   }
 
@@ -106,6 +122,14 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
                 <Input id="crossNumber" value={form.crossNumber} onChange={(e) => setForm({ ...form, crossNumber: e.target.value })} placeholder="e.g. 2024-001" />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="plannedDate">Planned Date</Label>
+                <Input id="plannedDate" type="date" value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </div>
+              <div className="space-y-2">
                 <Label>Method</Label>
                 <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v ?? "MANUAL" })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -125,6 +149,29 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search crosses..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={speciesFilter} onValueChange={handleSpeciesFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All species" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All species</SelectItem>
+            {species.map((s: any) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {crosses.length === 0 ? (

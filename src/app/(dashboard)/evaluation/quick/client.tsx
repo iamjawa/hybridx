@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createEvaluation } from "@/server/actions/seedlings"
 import { Sprout, ChevronLeft, ChevronRight, Keyboard, CheckCircle2, Loader2 } from "lucide-react"
@@ -17,6 +18,8 @@ const SCORE_FIELDS = [
   { key: "fragrance", label: "Fragrance", max: 10 },
   { key: "diseaseResistance", label: "Disease Resistance", max: 10 },
   { key: "novelty", label: "Novelty", max: 10 },
+  { key: "habit", label: "Growth Habit", max: 10 },
+  { key: "flowering", label: "Repeat Flowering", max: 10 },
 ]
 
 export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
@@ -27,6 +30,7 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
   const [scores, setScores] = useState<Record<string, Record<string, number>>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [notes, setNotes] = useState("")
   const [activeField, setActiveField] = useState(0)
   const inputRefs = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -110,10 +114,12 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
       criteria: {},
       scores: data,
       totalScore: Object.values(data).reduce((a: number, b: number) => a + b, 0) / Object.keys(data).length,
+      notes: notes || undefined,
     })
     setSaving(false)
     if (!result.success) { toast.error(result.error); return }
     setSaved(new Set(saved).add(current.id))
+    setNotes("")
     toast.success(`Saved — ${current.seedlingId}`)
     if (index < filtered.length - 1) {
       setIndex(index + 1)
@@ -221,6 +227,8 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
                 </div>
               ))}
             </div>
+
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add notes..." rows={2} className="mt-2" />
 
             <div className="flex items-center justify-between pt-2">
               <div className="flex gap-2">

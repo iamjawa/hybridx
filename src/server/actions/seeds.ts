@@ -159,6 +159,17 @@ export async function advanceSeedStage(id: string, stage: string): Promise<Actio
   }
 }
 
+export async function deleteSeed(id: string): Promise<ActionResult> {
+  try {
+    await prisma.seed.update({ where: { id }, data: { deletedAt: new Date() } })
+    auditLog({ action: "delete", entity: "Seed", entityId: id })
+    revalidatePath("/seeds")
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: "Failed to delete seed batch" }
+  }
+}
+
 export async function createSeedlingsFromSeed(seedId: string, count: number): Promise<ActionResult<{ seedlingIds: string[] }>> {
   try {
     const seed = await prisma.seed.findUnique({

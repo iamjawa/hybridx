@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Leaf, Plus, Search, Trash2, Loader2 } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -24,7 +25,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
   const [speciesFilter, setSpeciesFilter] = useState("")
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: "", speciesId: "", description: "", origin: "", year: "" })
+  const [form, setForm] = useState({ name: "", speciesId: "", description: "", origin: "", year: "", varietyName: "", colour: "", fragrance: "", diseaseResistance: "", repeatFlowering: false, status: "ACTIVE" })
   const [saving, setSaving] = useState(false)
 
   async function handleSearch(query: string) {
@@ -44,15 +45,21 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
     try {
       const result = await createPlant({
         name: form.name,
+        varietyName: form.varietyName || undefined,
         speciesId: form.speciesId || undefined,
         description: form.description || undefined,
         origin: form.origin || undefined,
         year: form.year ? parseInt(form.year) : undefined,
+        colour: form.colour || undefined,
+        fragrance: form.fragrance || undefined,
+        diseaseResistance: form.diseaseResistance || undefined,
+        repeatFlowering: form.repeatFlowering || undefined,
+        status: form.status || undefined,
       })
       if (!result.success) { toast.error(result.error); return }
       toast.success("Plant created")
       setOpen(false)
-      setForm({ name: "", speciesId: "", description: "", origin: "", year: "" })
+      setForm({ name: "", speciesId: "", description: "", origin: "", year: "", varietyName: "", colour: "", fragrance: "", diseaseResistance: "", repeatFlowering: false, status: "ACTIVE" })
       const plantsResult = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined })
       setPlants(plantsResult.plants)
       router.refresh()
@@ -121,6 +128,40 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
               <div className="space-y-2">
                 <Label htmlFor="year">Year</Label>
                 <Input id="year" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="varietyName">Variety Name</Label>
+                <Input id="varietyName" value={form.varietyName} onChange={(e) => setForm({ ...form, varietyName: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="colour">Colour</Label>
+                <Input id="colour" value={form.colour} onChange={(e) => setForm({ ...form, colour: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fragrance">Fragrance</Label>
+                <Input id="fragrance" value={form.fragrance} onChange={(e) => setForm({ ...form, fragrance: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="diseaseResistance">Disease Resistance</Label>
+                <Input id="diseaseResistance" value={form.diseaseResistance} onChange={(e) => setForm({ ...form, diseaseResistance: e.target.value })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="repeatFlowering" checked={form.repeatFlowering} onCheckedChange={(v: boolean) => setForm({ ...form, repeatFlowering: v })} />
+                <Label htmlFor="repeatFlowering" className="mb-0">Repeat Flowering</Label>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v ?? "ACTIVE" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="DORMANT">Dormant</SelectItem>
+                    <SelectItem value="DECEASED">Deceased</SelectItem>
+                    <SelectItem value="RETIRED">Retired</SelectItem>
+                    <SelectItem value="SOLD">Sold</SelectItem>
+                    <SelectItem value="GIFTED">Gifted</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" disabled={saving} className="w-full">
                 {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}

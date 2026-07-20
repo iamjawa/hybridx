@@ -21,24 +21,30 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
   const [seedlings, setSeedlings] = useState(initialSeedlings)
   const [search, setSearch] = useState("")
   const [evalOpen, setEvalOpen] = useState<string | null>(null)
-  const [evalForm, setEvalForm] = useState({ systemName: "Standard", scores: "{}", totalScore: "", notes: "" })
+  const [evalForm, setEvalForm] = useState({ systemName: "Standard", vigour: "", flowerForm: "", fragrance: "", diseaseResistance: "", novelty: "", totalScore: "", notes: "" })
   const [saving, setSaving] = useState(false)
 
   async function handleEvaluate(seedlingId: string) {
     setSaving(true)
     try {
+      const scores: Record<string, number> = {}
+      if (evalForm.vigour) scores.vigour = parseInt(evalForm.vigour)
+      if (evalForm.flowerForm) scores.flowerForm = parseInt(evalForm.flowerForm)
+      if (evalForm.fragrance) scores.fragrance = parseInt(evalForm.fragrance)
+      if (evalForm.diseaseResistance) scores.diseaseResistance = parseInt(evalForm.diseaseResistance)
+      if (evalForm.novelty) scores.novelty = parseInt(evalForm.novelty)
       const result = await createEvaluation({
         seedlingId,
         systemName: evalForm.systemName,
         criteria: {},
-        scores: JSON.parse(evalForm.scores || "{}"),
+        scores,
         totalScore: evalForm.totalScore ? parseFloat(evalForm.totalScore) : undefined,
         notes: evalForm.notes || undefined,
       })
       if (!result.success) { toast.error(result.error); return }
       toast.success("Evaluation saved")
       setEvalOpen(null)
-      setEvalForm({ systemName: "Standard", scores: "{}", totalScore: "", notes: "" })
+      setEvalForm({ systemName: "Standard", vigour: "", flowerForm: "", fragrance: "", diseaseResistance: "", novelty: "", totalScore: "", notes: "" })
       router.refresh()
     } finally {
       setSaving(false)
@@ -121,6 +127,18 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
                             </SelectContent>
                           </Select>
                         </div>
+                        {[
+                          { key: "vigour", label: "Vigour" },
+                          { key: "flowerForm", label: "Flower Form" },
+                          { key: "fragrance", label: "Fragrance" },
+                          { key: "diseaseResistance", label: "Disease Resistance" },
+                          { key: "novelty", label: "Novelty" },
+                        ].map((f) => (
+                          <div key={f.key} className="space-y-2">
+                            <Label htmlFor={f.key}>{f.label} (1-10)</Label>
+                            <Input id={f.key} type="number" min="1" max="10" value={(evalForm as any)[f.key]} onChange={(e) => setEvalForm({ ...evalForm, [f.key]: e.target.value })} />
+                          </div>
+                        ))}
                         <div className="space-y-2">
                           <Label htmlFor="score">Total Score (0-10)</Label>
                           <Input id="score" type="number" min="0" max="10" step="0.1" value={evalForm.totalScore} onChange={(e) => setEvalForm({ ...evalForm, totalScore: e.target.value })} />

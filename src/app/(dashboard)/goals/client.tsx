@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Target, Plus, Trash2, Loader2 } from "lucide-react"
+import { Target, Plus, Trash2, Loader2, Search } from "lucide-react"
 import Link from "next/link"
 import { createGoal, getGoals } from "@/server/actions/goals"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 export function GoalsClient({ goals: initialGoals, species }: any) {
   const router = useRouter()
   const [goals, setGoals] = useState(initialGoals)
+  const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     name: "", description: "", speciesId: "",
@@ -157,7 +158,14 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
         </Dialog>
       </div>
 
-      {goals.length === 0 ? (
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search goals..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
+      {(() => {
+        const filtered = goals.filter((g: any) => !search || g.name.toLowerCase().includes(search.toLowerCase()))
+        return filtered.length === 0 ? (
         <EmptyState
           icon={Target}
           title="No breeding goals"
@@ -170,7 +178,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {goals.map((goal: any) => (
+          {filtered.map((goal: any) => (
             <Link key={goal.id} href={`/goals/${goal.id}`}>
               <Card className="h-full transition-colors hover:border-border/80">
                 <CardContent className="p-5">
@@ -193,7 +201,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
             </Link>
           ))}
         </div>
-      )}
+      )})()}
     </div>
   )
 }

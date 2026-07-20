@@ -1,14 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Sprout, Heart, Ruler, Eye, Activity, Star, Target, GitMerge, Clock, CheckCircle2, XCircle, QrCode } from "lucide-react"
+import { Sprout, Heart, Ruler, Eye, Activity, Star, Target, GitMerge, Clock, CheckCircle2, XCircle, QrCode, Pencil } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { toggleFavourite, setDisposition } from "@/server/actions/seedlings"
+import { toggleFavourite, setDisposition, updateSeedling } from "@/server/actions/seedlings"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TraitBar, TraitText } from "@/components/profiles/trait-bar"
 import { GoalMatchCard } from "@/components/profiles/goal-match-card"
 import { EventTimeline } from "@/components/profiles/event-timeline"
@@ -24,6 +30,39 @@ const dispositionConfig: Record<string, { label: string; icon: any; color: strin
 
 export function SeedlingDetailClient({ seedling }: any) {
   const router = useRouter()
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    seedlingId: seedling.seedlingId ?? "",
+    year: seedling.year?.toString() ?? "",
+    generation: seedling.generation ?? "",
+    colour: seedling.colour ?? "",
+    fragrance: seedling.fragrance ?? "",
+    health: seedling.health?.toString() ?? "",
+    diseaseResistance: seedling.diseaseResistance?.toString() ?? "",
+    petalCount: seedling.petalCount?.toString() ?? "",
+    bloomSize: seedling.bloomSize?.toString() ?? "",
+    growthNotes: seedling.growthNotes ?? "",
+    flowerNotes: seedling.flowerNotes ?? "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updateSeedling(seedling.id, {
+      ...editForm,
+      year: editForm.year ? parseInt(editForm.year) : undefined,
+      health: editForm.health ? parseInt(editForm.health) : undefined,
+      diseaseResistance: editForm.diseaseResistance ? parseInt(editForm.diseaseResistance) : undefined,
+      petalCount: editForm.petalCount ? parseInt(editForm.petalCount) : undefined,
+      bloomSize: editForm.bloomSize ? parseFloat(editForm.bloomSize) : undefined,
+    })
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Seedling updated")
+    setEditOpen(false)
+    router.refresh()
+  }
 
   async function handleFavourite() {
     await toggleFavourite(seedling.id)
@@ -87,6 +126,9 @@ export function SeedlingDetailClient({ seedling }: any) {
                   </p>
                 </div>
                 <div className="flex gap-2 shrink-0">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+                    <Pencil className="size-4" />
+                  </Button>
                   <Link href={`/evaluation/quick`}>
                     <Button variant="default" size="sm"><Star className="mr-1.5 size-3.5" />Evaluate</Button>
                   </Link>
@@ -255,6 +297,69 @@ export function SeedlingDetailClient({ seedling }: any) {
           </Link>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Seedling</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-seedlingId">Seedling ID</Label>
+              <Input id="edit-seedlingId" value={editForm.seedlingId} onChange={(e) => setEditForm({ ...editForm, seedlingId: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-year">Year</Label>
+                <Input id="edit-year" type="number" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-generation">Generation</Label>
+                <Input id="edit-generation" value={editForm.generation} onChange={(e) => setEditForm({ ...editForm, generation: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-colour">Colour</Label>
+                <Input id="edit-colour" value={editForm.colour} onChange={(e) => setEditForm({ ...editForm, colour: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-fragrance">Fragrance</Label>
+                <Input id="edit-fragrance" value={editForm.fragrance} onChange={(e) => setEditForm({ ...editForm, fragrance: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-health">Health (0-10)</Label>
+                <Input id="edit-health" type="number" min="0" max="10" value={editForm.health} onChange={(e) => setEditForm({ ...editForm, health: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-diseaseResistance">Disease Resistance (0-10)</Label>
+                <Input id="edit-diseaseResistance" type="number" min="0" max="10" value={editForm.diseaseResistance} onChange={(e) => setEditForm({ ...editForm, diseaseResistance: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-petalCount">Petal Count</Label>
+                <Input id="edit-petalCount" type="number" value={editForm.petalCount} onChange={(e) => setEditForm({ ...editForm, petalCount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-bloomSize">Bloom Size (cm)</Label>
+                <Input id="edit-bloomSize" type="number" step="0.1" value={editForm.bloomSize} onChange={(e) => setEditForm({ ...editForm, bloomSize: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-growthNotes">Growth Notes</Label>
+              <Textarea id="edit-growthNotes" value={editForm.growthNotes} onChange={(e) => setEditForm({ ...editForm, growthNotes: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-flowerNotes">Flower Notes</Label>
+              <Textarea id="edit-flowerNotes" value={editForm.flowerNotes} onChange={(e) => setEditForm({ ...editForm, flowerNotes: e.target.value })} />
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

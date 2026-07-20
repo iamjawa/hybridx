@@ -7,18 +7,50 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Flower2, Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
+import { Flower2, Plus, Pencil, Trash2, GripVertical, Loader2 } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { createTrait, deleteTrait, updateSpecies } from "@/server/actions/species"
+import { createTrait, deleteTrait, updateSpecies, deleteSpecies } from "@/server/actions/species"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 export function SpeciesDetailClient({ species }: any) {
   const router = useRouter()
   const [traits, setTraits] = useState(species.traits || [])
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: species.name,
+    description: species.description ?? "",
+    pollenViability: species.pollenViability?.toString() ?? "100",
+    seedViability: species.seedViability?.toString() ?? "100",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updateSpecies(species.id, {
+      name: editForm.name,
+      description: editForm.description || undefined,
+      pollenViability: parseInt(editForm.pollenViability),
+      seedViability: parseInt(editForm.seedViability),
+    })
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Species updated")
+    setEditOpen(false)
+    router.refresh()
+  }
+
+  async function handleDeleteSpecies() {
+    const result = await deleteSpecies(species.id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Species deleted")
+    router.push("/species")
+  }
   const [traitOpen, setTraitOpen] = useState(false)
   const [traitForm, setTraitForm] = useState({ name: "", slug: "", type: "SCALE_1_10", category: "General", description: "" })
   const [saving, setSaving] = useState(false)
@@ -92,13 +124,23 @@ export function SpeciesDetailClient({ species }: any) {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: "Species", href: "/species" }, { label: species.name }]} />
-      <div className="flex items-center gap-4">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+      <div className="flex items-start gap-4">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 shrink-0">
           <Flower2 className="size-6 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{species.name}</h1>
           <p className="text-sm text-muted-foreground">{species.slug}</p>
+        </div>
+        <div className="flex gap-1 shrink-0">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" />
+          </Button>
+          <ConfirmDialog title="Delete species?" description="This will permanently remove this species and all associated data." onConfirm={handleDeleteSpecies}>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+              <Trash2 className="size-4" />
+            </Button>
+          </ConfirmDialog>
         </div>
       </div>
 
@@ -252,6 +294,35 @@ export function SpeciesDetailClient({ species }: any) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Species</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea id="edit-description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-pollenViability">Pollen Viability (%)</Label>
+                <Input id="edit-pollenViability" type="number" min="0" max="100" value={editForm.pollenViability} onChange={(e) => setEditForm({ ...editForm, pollenViability: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-seedViability">Seed Viability (%)</Label>
+                <Input id="edit-seedViability" type="number" min="0" max="100" value={editForm.seedViability} onChange={(e) => setEditForm({ ...editForm, seedViability: e.target.value })} />
+              </div>
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

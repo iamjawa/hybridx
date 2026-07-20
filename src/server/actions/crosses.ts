@@ -13,15 +13,24 @@ export async function getCrosses(params?: {
   speciesId?: string
   seedParentId?: string
   pollenParentId?: string
+  search?: string
   page?: number
   limit?: number
 }) {
-  const { speciesId, seedParentId, pollenParentId, page = 1, limit = 20 } = params || {}
+  const { speciesId, seedParentId, pollenParentId, search, page = 1, limit = 20 } = params || {}
   const userId = await requireUserId()
   const where: any = { deletedAt: null, createdById: userId }
   if (speciesId) where.speciesId = speciesId
   if (seedParentId) where.seedParentId = seedParentId
   if (pollenParentId) where.pollenParentId = pollenParentId
+  if (search) {
+    where.OR = [
+      { crossNumber: { contains: search, mode: "insensitive" } },
+      { notes: { contains: search, mode: "insensitive" } },
+      { seedParent: { name: { contains: search, mode: "insensitive" } } },
+      { pollenParent: { name: { contains: search, mode: "insensitive" } } },
+    ]
+  }
   const [crosses, total] = await Promise.all([
     prisma.cross.findMany({
       where,

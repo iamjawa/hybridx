@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Database, Calendar, Thermometer, Sprout, Hash, Activity, FlaskConical } from "lucide-react"
+import { Database, Calendar, Thermometer, Sprout, Hash, Activity, FlaskConical, Pencil } from "lucide-react"
 import Link from "next/link"
-import { startStratification, recordGermination, createSeedlingsFromSeed, getSeedById } from "@/server/actions/seeds"
+import { startStratification, recordGermination, createSeedlingsFromSeed, getSeedById, updateSeed } from "@/server/actions/seeds"
+import { getSpecies } from "@/server/actions/species"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { SEED_STAGE_LABELS } from "@/lib/constants"
@@ -29,6 +30,38 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
   const [germForm, setGermForm] = useState({ germinatedCount: "", failedCount: "", notes: "" })
 
   const [batchOpen, setBatchOpen] = useState(false)
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    batchNumber: seed.batchNumber ?? "",
+    speciesId: seed.speciesId ?? "",
+    totalCount: seed.totalCount?.toString() ?? "",
+    viableCount: seed.viableCount?.toString() ?? "",
+    harvestDate: seed.harvestDate ? new Date(seed.harvestDate).toISOString().split("T")[0] : "",
+    storageCondition: seed.storageCondition ?? "",
+    notes: seed.notes ?? "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [species, setSpecies] = useState<any[]>([])
+
+  useEffect(() => { getSpecies().then(setSpecies) }, [])
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    const result = await updateSeed(seed.id, {
+      ...editForm,
+      totalCount: editForm.totalCount ? parseInt(editForm.totalCount) : undefined,
+      viableCount: editForm.viableCount ? parseInt(editForm.viableCount) : undefined,
+      harvestDate: editForm.harvestDate ? new Date(editForm.harvestDate) : undefined,
+    })
+    setSavingEdit(false)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Seed batch updated")
+    setEditOpen(false)
+    const updated = await getSeedById(seed.id)
+    if (updated) setSeed(updated)
+    router.refresh()
+  }
   const [batchCount, setBatchCount] = useState("10")
 
   async function handleStartStratification() {
@@ -78,8 +111,8 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: "Seeds", href: "/seeds" }, { label: seed.batchNumber ?? "Seed batch" }]} />
-      <div className="flex items-center gap-4">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+      <div className="flex items-start gap-4">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 shrink-0">
           <Database className="size-6 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
@@ -95,6 +128,9 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
             {seed.species?.name ?? "Unknown species"}{seed.cross ? ` · ${seed.cross.seedParent?.name ?? "?"} × ${seed.cross.pollenParent?.name ?? "?"}` : ""}
           </p>
         </div>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" onClick={() => setEditOpen(true)}>
+          <Pencil className="size-4" />
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -292,6 +328,55 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Seed Batch</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleEdit() }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-batchNumber">Batch Number</Label>
+              <Input id="edit-batchNumber" value={editForm.batchNumber} onChange={(e) => setEditForm({ ...editForm, batchNumber: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Species</Label>
+              <Select value={editForm.speciesId} onValueChange={(v) => setEditForm({ ...editForm, speciesId: v ?? "" })}>
+                <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {species.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-totalCount">Total Count</Label>
+                <Input id="edit-totalCount" type="number" value={editForm.totalCount} onChange={(e) => setEditForm({ ...editForm, totalCount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-viableCount">Viable Count</Label>
+                <Input id="edit-viableCount" type="number" value={editForm.viableCount} onChange={(e) => setEditForm({ ...editForm, viableCount: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-harvestDate">Harvest Date</Label>
+              <Input id="edit-harvestDate" type="date" value={editForm.harvestDate} onChange={(e) => setEditForm({ ...editForm, harvestDate: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-storageCondition">Storage Condition</Label>
+              <Input id="edit-storageCondition" value={editForm.storageCondition} onChange={(e) => setEditForm({ ...editForm, storageCondition: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea id="edit-notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+            </div>
+            <Button type="submit" disabled={savingEdit} className="w-full">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

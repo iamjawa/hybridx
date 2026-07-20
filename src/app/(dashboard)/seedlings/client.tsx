@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sprout, Heart, Search } from "lucide-react"
+import { Sprout, Heart, Search, Plus } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { getSeedlings, toggleFavourite, setDisposition } from "@/server/actions/seedlings"
@@ -68,6 +68,7 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
           <h1 className="text-2xl font-semibold tracking-tight">Seedlings</h1>
           <p className="text-sm text-muted-foreground">{total} seedlings tracked</p>
         </div>
+        <Link href="/seedlings/new"><Button><Plus className="mr-2 size-4" />Add Seedling</Button></Link>
       </div>
 
       <div className="flex gap-3">
@@ -107,7 +108,7 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
           title="No seedlings yet"
           description="Seedlings appear when you create seed batches and record germination. They can also be created in batches from the seed detail page."
           action={
-            <Link href="/seeds"><Button variant="outline">Go to Seeds</Button></Link>
+            <Link href="/seedlings/new"><Button variant="outline">Add Seedling</Button></Link>
           }
         />
       ) : (
