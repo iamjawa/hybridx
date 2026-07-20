@@ -145,7 +145,7 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
                 <div className="space-y-2">
                   <Label>Type</Label>
                   <Select value={stratForm.stage} onValueChange={(v) => setStratForm({ ...stratForm, stage: v ?? "COLD_STRATIFYING" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger><SelectValue>{["COLD_STRATIFYING", "WARM_STRATIFYING"].find(v => v === stratForm.stage)}</SelectValue></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="COLD_STRATIFYING">Cold Stratification</SelectItem>
                       <SelectItem value="WARM_STRATIFYING">Warm Stratification</SelectItem>
@@ -340,7 +340,7 @@ export function SeedDetailClient({ seed: initialSeed }: any) {
             <div className="space-y-2">
               <Label>Species</Label>
               <Select value={editForm.speciesId} onValueChange={(v) => setEditForm({ ...editForm, speciesId: v ?? "" })}>
-                <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === editForm.speciesId)?.name}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">None</SelectItem>
                   {species.map((s: any) => (

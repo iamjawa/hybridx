@@ -93,7 +93,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
               <div className="space-y-2">
                 <Label>Species</Label>
                 <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Any species" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Any species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {species.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
                   </SelectContent>
@@ -123,7 +123,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <Select value={c.type} onValueChange={(v) => updateCriterion(i, "type", v ?? "TEXT")}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue>{["TEXT", "SCALE_1_5", "SCALE_1_10", "BOOLEAN", "NUMERIC"].find(v => v === c.type)}</SelectValue></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="TEXT">Text</SelectItem>
                           <SelectItem value="SCALE_1_5">Scale 1-5</SelectItem>
@@ -133,7 +133,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
                         </SelectContent>
                       </Select>
                       <Select value={c.operator} onValueChange={(v) => updateCriterion(i, "operator", v ?? "equals")}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue>{["equals", "contains", "gte", "lte"].find(v => v === c.operator)}</SelectValue></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="equals">Equals</SelectItem>
                           <SelectItem value="contains">Contains</SelectItem>

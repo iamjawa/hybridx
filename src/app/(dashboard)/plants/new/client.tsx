@@ -60,7 +60,7 @@ export function PlantNewClient({ species }: any) {
             <div className="space-y-2">
               <Label htmlFor="species">Species</Label>
               <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {species.map((s: any) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>

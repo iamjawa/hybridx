@@ -178,7 +178,7 @@ export function SpeciesDetailClient({ species }: any) {
                   <div className="space-y-2">
                     <Label>Type</Label>
                     <Select value={traitForm.type} onValueChange={(v) => setTraitForm({ ...traitForm, type: v ?? "SCALE_1_10" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue>{["SCALE_1_5", "SCALE_1_10", "BOOLEAN", "TEXT", "PERCENTAGE"].find(v => v === traitForm.type)}</SelectValue></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="SCALE_1_5">Scale 1-5</SelectItem>
                         <SelectItem value="SCALE_1_10">Scale 1-10</SelectItem>

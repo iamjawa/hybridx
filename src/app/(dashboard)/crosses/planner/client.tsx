@@ -136,7 +136,7 @@ export function CrossPlannerClient({ plants }: any) {
           <div className="space-y-2">
             <p className="text-sm font-medium">Seed Parent (♀)</p>
             <Select value={seedId} onValueChange={(v) => setSeedId(v ?? "")}>
-              <SelectTrigger><SelectValue placeholder="Choose seed parent..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Choose seed parent...">{plants.find((p: any) => p.id === seedId)?.name}</SelectValue></SelectTrigger>
               <SelectContent>
                 {plants.map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.name}{p.species ? ` (${p.species.name})` : ""}</SelectItem>))}
               </SelectContent>
@@ -145,7 +145,7 @@ export function CrossPlannerClient({ plants }: any) {
           <div className="space-y-2">
             <p className="text-sm font-medium">Pollen Parent (♂)</p>
             <Select value={pollenId} onValueChange={(v) => setPollenId(v ?? "")}>
-              <SelectTrigger><SelectValue placeholder="Choose pollen parent..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Choose pollen parent...">{plants.find((p: any) => p.id === pollenId)?.name}</SelectValue></SelectTrigger>
               <SelectContent>
                 {plants.filter((p: any) => p.id !== seedId).map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.name}{p.species ? ` (${p.species.name})` : ""}</SelectItem>))}
               </SelectContent>

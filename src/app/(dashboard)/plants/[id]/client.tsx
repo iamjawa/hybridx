@@ -330,7 +330,7 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
             <div className="space-y-2">
               <Label htmlFor="edit-species">Species</Label>
               <Select value={editForm.speciesId} onValueChange={(v) => setEditForm({ ...editForm, speciesId: v ?? "" })}>
-                <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === editForm.speciesId)?.name}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">None</SelectItem>
                   {species.map((s: any) => (
@@ -374,7 +374,7 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v ?? "ACTIVE" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{["ACTIVE", "INACTIVE", "ARCHIVED"].find(v => v === editForm.status)}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="INACTIVE">Inactive</SelectItem>

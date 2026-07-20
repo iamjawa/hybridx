@@ -153,7 +153,7 @@ export function ImportClient() {
                   </div>
                   <ArrowRight className="size-4 text-muted-foreground shrink-0" />
                   <Select value={columnMap[header] ?? "skip"} onValueChange={(v) => setColumnMap({ ...columnMap, [header]: v ?? "skip" })}>
-                    <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="flex-1"><SelectValue>{COLUMN_OPTIONS.find(o => o.value === (columnMap[header] ?? "skip"))?.label}</SelectValue></SelectTrigger>
                     <SelectContent>
                       {COLUMN_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>

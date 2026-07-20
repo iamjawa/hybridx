@@ -60,7 +60,7 @@ export function CrossNewClient({ species, plants, defaultSeedParentId, defaultPo
               <div className="space-y-2">
                 <Label htmlFor="species">Species</Label>
                 <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {species.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -71,7 +71,7 @@ export function CrossNewClient({ species, plants, defaultSeedParentId, defaultPo
               <div className="space-y-2">
                 <Label htmlFor="method">Method</Label>
                 <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v ?? "MANUAL" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue>{["MANUAL", "OPEN", "BAG", "CAGE", "ISOLATION"].find(v => v === form.method)}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MANUAL">Manual</SelectItem>
                     <SelectItem value="OPEN">Open</SelectItem>
@@ -86,7 +86,7 @@ export function CrossNewClient({ species, plants, defaultSeedParentId, defaultPo
               <div className="space-y-2">
                 <Label htmlFor="seedParent">Seed Parent</Label>
                 <Select value={form.seedParentId} onValueChange={(v) => setForm({ ...form, seedParentId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select parent" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select parent">{plants.find((p: any) => p.id === form.seedParentId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {plants.map((p: any) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -97,7 +97,7 @@ export function CrossNewClient({ species, plants, defaultSeedParentId, defaultPo
               <div className="space-y-2">
                 <Label htmlFor="pollenParent">Pollen Parent</Label>
                 <Select value={form.pollenParentId} onValueChange={(v) => setForm({ ...form, pollenParentId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select parent" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select parent">{plants.find((p: any) => p.id === form.pollenParentId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {plants.map((p: any) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>

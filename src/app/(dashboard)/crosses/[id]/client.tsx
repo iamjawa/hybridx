@@ -236,7 +236,7 @@ export function CrossDetailClient({ cross }: any) {
             <div className="space-y-2">
               <Label>Method</Label>
               <Select value={editForm.method} onValueChange={(v) => setEditForm({ ...editForm, method: v ?? "" })}>
-                <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select method">{["MANUAL", "OPEN", "CONTROLLED", "HAND"].find(v => v === editForm.method)}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MANUAL">Manual</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>

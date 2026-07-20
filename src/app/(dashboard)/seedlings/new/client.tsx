@@ -68,7 +68,7 @@ export function SeedlingNewClient({ species, crosses }: any) {
               <div className="space-y-2">
                 <Label htmlFor="species">Species</Label>
                 <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {species.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -79,7 +79,7 @@ export function SeedlingNewClient({ species, crosses }: any) {
               <div className="space-y-2">
                 <Label htmlFor="generation">Generation</Label>
                 <Select value={form.generation} onValueChange={(v) => setForm({ ...form, generation: v ?? "F1" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue>{["F1", "F2", "F3", "F4", "F5", "BC1", "BC2"].find(v => v === form.generation)}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="F1">F1</SelectItem>
                     <SelectItem value="F2">F2</SelectItem>
@@ -95,7 +95,7 @@ export function SeedlingNewClient({ species, crosses }: any) {
             <div className="space-y-2">
               <Label htmlFor="cross">Cross</Label>
               <Select value={form.crossId} onValueChange={(v) => setForm({ ...form, crossId: v ?? "" })}>
-                <SelectTrigger><SelectValue placeholder="Select cross" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select cross">{crosses.find((c: any) => c.id === form.crossId)?.crossNumber}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {crosses.map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>

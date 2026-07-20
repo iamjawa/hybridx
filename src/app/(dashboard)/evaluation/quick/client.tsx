@@ -165,7 +165,7 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
         <div className="flex items-center gap-2">
           <Keyboard className="size-4 text-muted-foreground" />
           <Select value={speciesFilter} onValueChange={(v) => setSpeciesFilter(v ?? "")}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Filter" /></SelectTrigger>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Filter">{species.find((s: any) => s.id === speciesFilter)?.name}</SelectValue></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All species</SelectItem>
               {species.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}

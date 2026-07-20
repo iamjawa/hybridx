@@ -119,7 +119,7 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
                         <div className="space-y-2">
                           <Label>System</Label>
                           <Select value={evalForm.systemName} onValueChange={(v) => setEvalForm({ ...evalForm, systemName: v ?? "Standard" })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger><SelectValue>{["Standard", "Detailed", "Blind"].find(v => v === evalForm.systemName)}</SelectValue></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Standard">Standard</SelectItem>
                               <SelectItem value="Detailed">Detailed</SelectItem>

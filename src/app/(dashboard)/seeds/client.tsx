@@ -121,7 +121,7 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
               <div className="space-y-2">
                 <Label>Species</Label>
                 <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {species.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
                   </SelectContent>
@@ -162,7 +162,7 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
           <Input placeholder="Search seed batches..." value={search} onChange={(e) => handleSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={stageFilter} onValueChange={handleStageFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All stages" /></SelectTrigger>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All stages">{stageFilter && stageFilter !== "all" ? (SEED_STAGE_LABELS[stageFilter] ?? stageFilter) : undefined}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All stages</SelectItem>
             {stageOrder.map((s) => (

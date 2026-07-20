@@ -113,7 +113,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
               <div className="space-y-2">
                 <Label htmlFor="species">Species</Label>
                 <Select value={form.speciesId} onValueChange={(v) => setForm({ ...form, speciesId: v ?? "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select species">{species.find((s: any) => s.id === form.speciesId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {species.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -152,7 +152,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v ?? "ACTIVE" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue>{["ACTIVE", "DORMANT", "DECEASED", "RETIRED", "SOLD", "GIFTED"].find(v => v === form.status)}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">Active</SelectItem>
                     <SelectItem value="DORMANT">Dormant</SelectItem>
@@ -184,7 +184,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
         </div>
         <Select value={speciesFilter} onValueChange={handleSpeciesFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All species" />
+            <SelectValue placeholder="All species">{species.find((s: any) => s.id === speciesFilter)?.name}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All species</SelectItem>

@@ -49,7 +49,7 @@ export function FeedbackClient() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Category</p>
               <Select value={type} onValueChange={(v) => setType(v ?? "GENERAL")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{["BUG", "FEATURE_REQUEST", "CONFUSION", "GENERAL"].find(v => v === type)}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="BUG">Bug report</SelectItem>
                   <SelectItem value="FEATURE_REQUEST">Feature suggestion</SelectItem>

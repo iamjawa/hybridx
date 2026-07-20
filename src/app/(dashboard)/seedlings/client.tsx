@@ -82,14 +82,14 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
           />
         </div>
         <Select value={speciesFilter} onValueChange={(v) => { setSpeciesFilter(v ?? ""); setTimeout(filter, 0) }}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Species" /></SelectTrigger>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Species">{species.find((s: any) => s.id === speciesFilter)?.name}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All species</SelectItem>
             {species.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
           </SelectContent>
         </Select>
         <Select value={dispositionFilter} onValueChange={(v) => { setDispositionFilter(v ?? ""); setTimeout(filter, 0) }}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Disposition" /></SelectTrigger>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Disposition">{["SELECTED", "KEPT", "CULLED", "SOLD", "GIFTED", "DEAD"].find(v => v === dispositionFilter)}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="SELECTED">Selected</SelectItem>
