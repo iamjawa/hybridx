@@ -71,6 +71,7 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
           placeholder="Search seedlings to evaluate..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && (setSearch(""), e.currentTarget.blur())}
           className="pl-9"
         />
       </div>

@@ -159,7 +159,7 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search seed batches..." value={search} onChange={(e) => handleSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search seed batches..." value={search} onChange={(e) => handleSearch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && (setSearch(""), handleSearch(""), e.currentTarget.blur())} className="pl-9" />
         </div>
         <Select value={stageFilter} onValueChange={handleStageFilter}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="All stages">{stageFilter && stageFilter !== "all" ? (SEED_STAGE_LABELS[stageFilter] ?? stageFilter) : undefined}</SelectValue></SelectTrigger>

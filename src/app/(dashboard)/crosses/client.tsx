@@ -158,6 +158,7 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
             placeholder="Search crosses..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && (setSearch(""), handleSearch(""), e.currentTarget.blur())}
             className="pl-9"
           />
         </div>

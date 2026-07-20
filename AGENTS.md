@@ -85,6 +85,10 @@ Reading source code and assuming it works is how bugs get missed. You MUST verif
 
 If after 30 minutes of debugging or three tested hypotheses the root cause is still unconfirmed: STOP. Summarise everything learned, remaining hypotheses, evidence collected, and recommended next experiment. Do NOT continue making speculative fixes.
 
+### Step 0 before any hypothesis: check Railway logs
+
+Run `railway logs --deployment --lines 50 --filter "@level:error"` from the project root. The real error is often sitting there with a digest that matches what the user sees in the browser. Read the logs before reading the code. This rule has a higher priority than any other debugging step — stack traces in Railway logs are ground truth, guesses about Turbopack/webpack chunk behaviour are not.
+
 ## Severity scale for bugs
 
 - **Critical:** App cannot be used. Login impossible, can't create core entities, data loss, white screen, OAuth broken.

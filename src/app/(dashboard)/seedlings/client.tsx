@@ -78,6 +78,7 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
             placeholder="Search by seedling ID..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && (setSearch(""), handleSearch(""), e.currentTarget.blur())}
             className="pl-9"
           />
         </div>

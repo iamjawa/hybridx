@@ -88,7 +88,7 @@ export function SpeciesClient({ species }: any) {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search species..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Search species..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && (setSearch(""), e.currentTarget.blur())} className="pl-9" />
       </div>
 
       {(() => {
