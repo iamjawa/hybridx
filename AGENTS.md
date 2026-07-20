@@ -27,3 +27,41 @@ Reading source code and assuming it works is how bugs get missed. You MUST verif
 
 8. **When something breaks, say "I haven't tested this" instead of pretending you knew it worked.** Honesty about what you haven't verified is more useful than false confidence.
 <!-- END:audit-the-app-not-the-code -->
+
+<!-- BEGIN:debugging-discipline -->
+# Debugging discipline
+
+## Before reporting or fixing any bug
+
+1. **Build a feedback loop first.** You need a tight, deterministic, fast way to reproduce the bug before forming any hypothesis. No red-capable feedback loop = no theory.
+
+2. **Reproduce the exact symptom the user described.** Not a nearby error. Not a code smell. The exact thing the user reported. Capture the URL, error message, and steps.
+
+3. **Evidence score everything.** Every diagnosis must include a confidence score (1-5). 1 = observed directly. 5 = root cause reproduced and verified. Below 4/5 evidence, do NOT implement a fix.
+
+4. **Never state that something IS the cause unless proven.** Use: "Possible", "Likely", "Hypothesis", "Confirmed". No "I'm confident this is the issue" without supporting evidence.
+
+5. **Generate 3-5 falsifiable hypotheses before picking one.** Each hypothesis must state a specific prediction: "If X is the cause, then changing Y will make the bug disappear."
+
+6. **Show ranked hypotheses to the user before implementing.** They may have domain knowledge that instantly re-ranks.
+
+7. **Tag every debug log with a unique prefix** like `[DEBUG-a4f2]` so cleanup is a single grep.
+
+## When stuck
+
+If after 30 minutes of debugging or three tested hypotheses the root cause is still unconfirmed: STOP. Summarise everything learned, remaining hypotheses, evidence collected, and recommended next experiment. Do NOT continue making speculative fixes.
+
+## Severity scale for bugs
+
+- **Critical:** App cannot be used. Login impossible, can't create core entities, data loss, white screen, OAuth broken.
+- **High:** Core workflow blocked. Can't create crosses, can't evaluate seedlings, can't import CSV.
+- **Medium:** Workflow slowed. Missing loading spinner, search not debounced, missing tooltip.
+- **Low:** Polish. Typography, spacing, copy, animation.
+
+## Fix discipline
+
+1. Fix the smallest possible change that addresses the confirmed root cause.
+2. No unrelated refactors during a bug fix.
+3. Build and verify after EVERY change before declaring success.
+4. If the fix doesn't work, undo it and try the next hypothesis — don't pile changes on top of each other.
+<!-- END:debugging-discipline -->
