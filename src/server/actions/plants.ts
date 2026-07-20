@@ -20,7 +20,7 @@ export async function getPlants(params?: {
   const userId = await requireUserId()
   const where: any = { deletedAt: null, breederId: userId }
   if (speciesId) where.speciesId = speciesId
-  if (status) where.status = status
+  if (status) where.status = status.toUpperCase()
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },

@@ -22,7 +22,7 @@ export async function getSeeds(params?: {
   const where: any = { deletedAt: null, cross: { createdById: userId } }
   if (speciesId) where.speciesId = speciesId
   if (crossId) where.crossId = crossId
-  if (stage) where.stage = stage
+  if (stage) where.stage = stage.toUpperCase()
   if (search) {
     where.OR = [
       { batchNumber: { contains: search, mode: "insensitive" } },
