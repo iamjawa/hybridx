@@ -128,7 +128,7 @@ export function GoalDetailClient({ goal: initialGoal }: any) {
               <div key={i} className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{c.traitName}</p>
-                  <p className="text-xs text-muted-foreground">Target: {String(c.targetValue)} · {c.type}{c.operator !== "equals" ? ` · ${c.operator}` : ""}</p>
+                  <p className="text-xs text-muted-foreground">Target: {String(c.targetValue)} · {c.type}{c.operator && c.operator !== "equals" ? ` · ${c.operator}` : ""}</p>
                 </div>
                 <div className="w-32">
                   <div className="flex items-center gap-2">
