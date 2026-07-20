@@ -13,9 +13,15 @@ export async function createClient() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // ponytail: cookies can't be set during server component render
+            // (Next.js 16 restriction). Token refresh sets will be picked up
+            // on next Server Action / Route Handler call.
+          }
         },
       },
     }
