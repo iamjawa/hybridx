@@ -201,9 +201,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
           title="No plants yet"
           description="You haven't added any parent plants yet. Add your first plant to begin tracking your breeding collection."
           action={
-            <Dialog>
-              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Add Your First Plant</DialogTrigger>
-            </Dialog>
+            <Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />Add Your First Plant</Button>
           }
         />
       ) : (
