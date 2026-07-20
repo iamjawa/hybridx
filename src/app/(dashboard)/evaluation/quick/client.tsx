@@ -12,15 +12,13 @@ import { Sprout, ChevronLeft, ChevronRight, Keyboard, CheckCircle2, Loader2 } fr
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-const SCORE_FIELDS = [
-  { key: "vigour", label: "Vigour", max: 10 },
-  { key: "flowerForm", label: "Flower Form", max: 10 },
-  { key: "fragrance", label: "Fragrance", max: 10 },
-  { key: "diseaseResistance", label: "Disease Resistance", max: 10 },
-  { key: "novelty", label: "Novelty", max: 10 },
-  { key: "habit", label: "Growth Habit", max: 10 },
-  { key: "flowering", label: "Repeat Flowering", max: 10 },
-]
+function traitMax(type: string) {
+  if (type === "SCALE_1_10") return 10
+  if (type === "SCALE_1_5") return 5
+  if (type === "BOOLEAN" || type === "YES_NO") return 1
+  if (type === "PERCENTAGE") return 100
+  return 10
+}
 
 export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
   const router = useRouter()
@@ -37,6 +35,7 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
   const filtered = seedlings.filter((s: any) => !speciesFilter || s.speciesId === speciesFilter)
   const current = filtered[index] as any
   const currentScores = scores[current?.id] ?? {}
+  const traitFields = current ? (species.find((s: any) => s.id === current.speciesId)?.traits ?? []) : []
 
   const evaluatedCount = saved.size
   const totalCount = filtered.length
@@ -63,24 +62,26 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
       }
 
       if (e.key === "Tab") {
+        if (traitFields.length === 0) return
         e.preventDefault()
-        const next = (activeField + 1) % (SCORE_FIELDS.length + 1)
+        const next = (activeField + 1) % (traitFields.length + 1)
         setActiveField(next)
-        if (next < SCORE_FIELDS.length) {
+        if (next < traitFields.length) {
           inputRefs.current[next]?.focus()
         }
         return
       }
 
-      const field = SCORE_FIELDS[activeField]
+      const field = traitFields[activeField]
       if (field && e.key >= "0" && e.key <= "9") {
         const val = parseInt(e.key)
-        if (val <= field.max) {
+        const max = traitMax(field.type)
+        if (val <= max) {
           setScores((prev) => ({
             ...prev,
-            [current.id]: { ...prev[current.id], [field.key]: val },
+            [current.id]: { ...prev[current.id], [field.slug]: val },
           }))
-          const next = (activeField + 1) % SCORE_FIELDS.length
+          const next = (activeField + 1) % traitFields.length
           setActiveField(next)
           inputRefs.current[next]?.focus()
         }
@@ -89,7 +90,7 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [current, activeField, scores])
+  }, [current, activeField, scores, traitFields])
 
   useEffect(() => {
     inputRefs.current[activeField]?.focus()
@@ -201,28 +202,39 @@ export function QuickEvalClient({ seedlings: initialSeedlings, species }: any) {
             </div>
 
             <div className="space-y-3">
-              {SCORE_FIELDS.map((field, i) => (
-                <div key={field.key} className="flex items-center gap-4">
-                  <label className="text-sm font-medium w-32 shrink-0">{field.label}</label>
+              {traitFields.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No trait definitions for this species. Add traits in Species settings.</p>
+              ) : traitFields.map((trait: any, i: number) => (
+                <div key={trait.id} className="flex items-center gap-4">
+                  <label className="text-sm font-medium w-32 shrink-0">{trait.name}</label>
                   <div className="flex-1 flex gap-1">
-                    {Array.from({ length: field.max }, (_, v) => v + 1).map((val) => {
-                      const isActive = currentScores[field.key] === val
+                    {(trait.type === "SCALE_1_10" || trait.type === "SCALE_1_5") && Array.from({ length: traitMax(trait.type) }, (_, v) => v + 1).map((val) => {
+                      const isActive = currentScores[trait.slug] === val
                       return (
-                        <button
-                          key={val}
-                          ref={(el) => { inputRefs.current[i] = el }}
-                          onClick={() => setScore(field.key, val)}
-                          className={`flex-1 h-10 rounded-md text-sm font-medium transition-colors ${
-                            isActive
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "bg-muted text-muted-foreground hover:bg-muted/80"
-                          } ${activeField === i ? "ring-2 ring-primary/50" : ""}`}
-                          tabIndex={-1}
-                        >
+                        <button key={val} ref={(el) => { inputRefs.current[i] = el }} onClick={() => setScore(trait.slug, val)}
+                          className={`flex-1 h-10 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"} ${activeField === i ? "ring-2 ring-primary/50" : ""}`} tabIndex={-1}>
                           {val}
                         </button>
                       )
                     })}
+                    {(trait.type === "BOOLEAN" || trait.type === "YES_NO") && [0, 1].map((val) => {
+                      const isActive = currentScores[trait.slug] === val
+                      return (
+                        <button key={val} ref={(el) => { inputRefs.current[i] = el }} onClick={() => setScore(trait.slug, val)}
+                          className={`flex-1 h-10 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"} ${activeField === i ? "ring-2 ring-primary/50" : ""}`} tabIndex={-1}>
+                          {val ? "Yes" : "No"}
+                        </button>
+                      )
+                    })}
+                    {trait.type === "PERCENTAGE" && (
+                      <div className="flex items-center gap-2 w-full">
+                        <input type="range" min="0" max="100" value={currentScores[trait.slug] ?? 0} onChange={(e) => setScore(trait.slug, parseInt(e.target.value))} className="flex-1" />
+                        <span className="text-sm w-8 text-right">{currentScores[trait.slug] ?? 0}%</span>
+                      </div>
+                    )}
+                    {trait.type === "NUMERIC" && (
+                      <input type="number" value={currentScores[trait.slug] ?? ""} onChange={(e) => setScore(trait.slug, parseInt(e.target.value) || 0)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                    )}
                   </div>
                 </div>
               ))}

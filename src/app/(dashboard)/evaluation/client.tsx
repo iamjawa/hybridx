@@ -21,21 +21,30 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
   const [seedlings, setSeedlings] = useState(initialSeedlings)
   const [search, setSearch] = useState("")
   const [evalOpen, setEvalOpen] = useState<string | null>(null)
-  const [evalForm, setEvalForm] = useState({ systemName: "Standard", vigour: "", flowerForm: "", fragrance: "", diseaseResistance: "", novelty: "", totalScore: "", notes: "" })
+  const [evalForm, setEvalForm] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
   async function handleEvaluate(seedlingId: string) {
     setSaving(true)
     try {
+      const seedling = seedlings.find((s: any) => s.id === seedlingId)
+      const sp = species.find((s: any) => s.id === seedling?.speciesId)
+      const traits = sp?.traits ?? []
       const scores: Record<string, number> = {}
-      if (evalForm.vigour) scores.vigour = parseInt(evalForm.vigour)
-      if (evalForm.flowerForm) scores.flowerForm = parseInt(evalForm.flowerForm)
-      if (evalForm.fragrance) scores.fragrance = parseInt(evalForm.fragrance)
-      if (evalForm.diseaseResistance) scores.diseaseResistance = parseInt(evalForm.diseaseResistance)
-      if (evalForm.novelty) scores.novelty = parseInt(evalForm.novelty)
+      for (const trait of traits) {
+        const val = evalForm[trait.slug]
+        if (val !== undefined && val !== "" && trait.type !== "TEXT") {
+          if (trait.type === "BOOLEAN" || trait.type === "YES_NO") {
+            scores[trait.slug] = parseInt(val)
+          } else {
+            const num = parseFloat(val)
+            if (!isNaN(num)) scores[trait.slug] = num
+          }
+        }
+      }
       const result = await createEvaluation({
         seedlingId,
-        systemName: evalForm.systemName,
+        systemName: evalForm.systemName ?? "Standard",
         criteria: {},
         scores,
         totalScore: evalForm.totalScore ? parseFloat(evalForm.totalScore) : undefined,
@@ -44,7 +53,7 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
       if (!result.success) { toast.error(result.error); return }
       toast.success("Evaluation saved")
       setEvalOpen(null)
-      setEvalForm({ systemName: "Standard", vigour: "", flowerForm: "", fragrance: "", diseaseResistance: "", novelty: "", totalScore: "", notes: "" })
+      setEvalForm({})
       router.refresh()
     } finally {
       setSaving(false)
@@ -128,18 +137,41 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
                             </SelectContent>
                           </Select>
                         </div>
-                        {[
-                          { key: "vigour", label: "Vigour" },
-                          { key: "flowerForm", label: "Flower Form" },
-                          { key: "fragrance", label: "Fragrance" },
-                          { key: "diseaseResistance", label: "Disease Resistance" },
-                          { key: "novelty", label: "Novelty" },
-                        ].map((f) => (
-                          <div key={f.key} className="space-y-2">
-                            <Label htmlFor={f.key}>{f.label} (1-10)</Label>
-                            <Input id={f.key} type="number" min="1" max="10" value={(evalForm as any)[f.key]} onChange={(e) => setEvalForm({ ...evalForm, [f.key]: e.target.value })} />
-                          </div>
-                        ))}
+                        {(() => {
+                          const sp = species.find((sp: any) => sp.id === s.speciesId)
+                          return (sp?.traits ?? []).map((trait: any) => {
+                            const val = evalForm[trait.slug] ?? ""
+                            return (
+                              <div key={trait.id} className="space-y-2">
+                                <Label htmlFor={trait.slug}>{trait.name}</Label>
+                                {(trait.type === "SCALE_1_5" || trait.type === "SCALE_1_10") && (
+                                  <Input id={trait.slug} type="number" min="1" max={trait.type === "SCALE_1_10" ? "10" : "5"} value={val} onChange={(e) => setEvalForm({ ...evalForm, [trait.slug]: e.target.value })} />
+                                )}
+                                {(trait.type === "BOOLEAN" || trait.type === "YES_NO") && (
+                                  <Select value={val} onValueChange={(v) => setEvalForm({ ...evalForm, [trait.slug]: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">Yes</SelectItem>
+                                      <SelectItem value="0">No</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                                {trait.type === "TEXT" && (
+                                  <Input id={trait.slug} value={val} onChange={(e) => setEvalForm({ ...evalForm, [trait.slug]: e.target.value })} />
+                                )}
+                                {trait.type === "PERCENTAGE" && (
+                                  <div className="flex items-center gap-2">
+                                    <Input id={trait.slug} type="number" min="0" max="100" value={val} onChange={(e) => setEvalForm({ ...evalForm, [trait.slug]: e.target.value })} className="flex-1" />
+                                    <span className="text-sm text-muted-foreground">%</span>
+                                  </div>
+                                )}
+                                {trait.type === "NUMERIC" && (
+                                  <Input id={trait.slug} type="number" value={val} onChange={(e) => setEvalForm({ ...evalForm, [trait.slug]: e.target.value })} />
+                                )}
+                              </div>
+                            )
+                          })
+                        })()}
                         <div className="space-y-2">
                           <Label htmlFor="score">Total Score (0-10)</Label>
                           <Input id="score" type="number" min="0" max="10" step="0.1" value={evalForm.totalScore} onChange={(e) => setEvalForm({ ...evalForm, totalScore: e.target.value })} />

@@ -1,0 +1,44 @@
+﻿
+> hybridx@0.1.0 build
+> prisma generate && next build --webpack
+
+node.exe : Loaded Prisma config from prisma.config.ts.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Loaded Prisma c...isma.config.ts.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Prisma schema loaded from prisma\schema.prisma.
+
+Ô£ö Generated Prisma Client (7.8.0) to .\src\generated\prisma in 156ms
+
+Ôû▓ Next.js 16.2.10 (webpack)
+
+  Creating an optimized production build ...
+Failed to compile.
+
+./src/lib/auth.ts
+Error:   x You're importing a module that depends on "next/headers". This API is only available in Server Components 
+in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Billy\Desktop\code\hybridx\src\lib\auth.ts:2:1]
+ 1 | import { createServerClient } from "@supabase/ssr"
+ 2 | import { cookies } from "next/headers"
+   : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 3 | 
+ 4 | export async function createClient() {
+ 4 |   const cookieStore = await cookies()
+   `----
+
+Import trace for requested module:
+./src/lib/auth.ts
+./src/lib/require-user.ts
+./src/server/actions/traits.ts
+./src/app/(dashboard)/plants/[id]/client.tsx
+
+
+> Build failed because of webpack errors

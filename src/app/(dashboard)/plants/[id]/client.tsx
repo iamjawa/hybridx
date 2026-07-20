@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   Leaf, GitMerge, Sprout, MapPin, Calendar, Award,
   ImageIcon, Plus, Pencil, Trash2, Star, Clock, FlaskConical, Heart,
-  Crosshair, Ruler, Activity, QrCode,
+  Crosshair, Ruler, Activity, QrCode, FileText, CheckSquare, CalendarPlus,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -22,6 +22,9 @@ import { addImage, setPrimaryImage, deleteImage } from "@/server/actions/images"
 import { updatePlant, deletePlant } from "@/server/actions/plants"
 import { getSpecies } from "@/server/actions/species"
 import { createNote, deleteNote } from "@/server/actions/notes"
+import { upsertTraitValue } from "@/server/actions/traits"
+import { getTasks, createTask, toggleTask, deleteTask } from "@/server/actions/tasks"
+import { getDocuments, createDocument, deleteDocument } from "@/server/actions/documents"
 import { PedigreeTree } from "@/components/plant/pedigree-tree"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -155,7 +158,12 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
 
           {(plant.traitValues?.length > 0 || plant.colour || plant.fragrance || plant.diseaseResistance != null) && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Traits</CardTitle></CardHeader>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Traits</CardTitle>
+                  <TraitValuesEditor plant={plant} onUpdate={reload} />
+                </div>
+              </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {plant.colour && <TraitText label="Flower Colour" value={plant.colour} />}
@@ -264,6 +272,8 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
           </Card>
 
           <NotesSection notes={plant.note ?? []} plantId={plant.id} onUpdate={reload} />
+          <TasksSection plantId={plant.id} onUpdate={reload} />
+          <DocumentsSection plantId={plant.id} onUpdate={reload} />
         </div>
 
         <div className="space-y-4">
@@ -519,6 +529,271 @@ function NotesSection({ notes, plantId, onUpdate }: { notes: any[]; plantId: str
                     </Button>
                   </ConfirmDialog>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function TraitValuesEditor({ plant, onUpdate }: { plant: any; onUpdate: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [values, setValues] = useState<Record<string, any>>({})
+  const [saving, setSaving] = useState(false)
+
+  const traits = plant.species?.traits ?? []
+  const noSpecies = !plant.species
+  const noTraits = plant.species && traits.length === 0
+
+  useEffect(() => {
+    if (!open) return
+    const initial: Record<string, any> = {}
+    plant.traitValues?.forEach((tv: any) => {
+      initial[tv.traitId] = tv.value
+    })
+    traits.forEach((t: any) => {
+      if (!(t.id in initial)) {
+        if (t.type === "BOOLEAN") initial[t.id] = false
+        else if (t.type === "YES_NO") initial[t.id] = "No"
+        else initial[t.id] = ""
+      }
+    })
+    setValues(initial)
+  }, [open])
+
+  async function handleSave() {
+    setSaving(true)
+    for (const [traitId, value] of Object.entries(values)) {
+      const result = await upsertTraitValue({ traitId, plantId: plant.id, value })
+      if (!result.success) { toast.error(result.error); setSaving(false); return }
+    }
+    setSaving(false)
+    toast.success("Traits updated")
+    setOpen(false)
+    onUpdate()
+  }
+
+  const inputForTrait = (trait: any) => {
+    const val = values[trait.id] ?? ""
+    switch (trait.type) {
+      case "SCALE_1_5":
+        return <Input type="number" min={1} max={5} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "SCALE_1_10":
+        return <Input type="number" min={1} max={10} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "BOOLEAN":
+        return <Checkbox checked={val === true || val === "true"} onCheckedChange={(v: boolean) => setValues({ ...values, [trait.id]: v })} />
+      case "TEXT":
+        return <Input type="text" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "PERCENTAGE":
+        return (
+          <div className="flex items-center gap-2">
+            <Input type="number" min={0} max={100} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+        )
+      case "NUMERIC":
+        return <Input type="number" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "YES_NO":
+        return (
+          <Select value={String(val)} onValueChange={(v) => setValues({ ...values, [trait.id]: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Yes">Yes</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      default:
+        return <Input type="text" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm"><Pencil className="mr-1.5 size-3.5" />Edit Traits</Button>} />
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit Traits</DialogTitle></DialogHeader>
+        {noSpecies ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Assign a species first</p>
+        ) : noTraits ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No traits defined for this species</p>
+        ) : (
+          <div className="space-y-4">
+            {traits.map((trait: any) => (
+              <div key={trait.id} className="space-y-2">
+                <Label>{trait.name}</Label>
+                {inputForTrait(trait)}
+              </div>
+            ))}
+          </div>
+        )}
+        {!noSpecies && !noTraits && (
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TasksSection({ plantId, onUpdate }: { plantId: string; onUpdate: () => void }) {
+  const [tasks, setTasks] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [dueDate, setDueDate] = useState("")
+
+  useEffect(() => { getTasks("plant", plantId).then(setTasks) }, [plantId])
+
+  async function handleCreate() {
+    if (!title.trim()) return
+    const result = await createTask({ title: title.trim(), dueDate: dueDate || undefined, plantId })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Task created")
+    setTitle("")
+    setDueDate("")
+    setOpen(false)
+    const updated = await getTasks("plant", plantId)
+    setTasks(updated)
+    onUpdate()
+  }
+
+  async function handleToggle(task: any) {
+    const result = await toggleTask(task.id, !task.completed)
+    if (!result.success) { toast.error(result.error); return }
+    const updated = await getTasks("plant", plantId)
+    setTasks(updated)
+    onUpdate()
+  }
+
+  async function handleDelete(taskId: string) {
+    const result = await deleteTask(taskId)
+    if (!result.success) { toast.error(result.error); return }
+    const updated = await getTasks("plant", plantId)
+    setTasks(updated)
+    onUpdate()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2"><CheckSquare className="size-4" />Tasks</CardTitle>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button variant="outline" size="sm"><CalendarPlus className="mr-1.5 size-3.5" />Add Task</Button>} />
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreate() }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="task-title">Title</Label>
+                  <Input id="task-title" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="What needs to be done?" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-due">Due Date (optional)</Label>
+                  <Input id="task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
+                <Button type="submit" className="w-full">Create Task</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
+        ) : (
+          <div className="space-y-2">
+            {tasks.map((task: any) => (
+              <div key={task.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Checkbox checked={task.completed} onCheckedChange={() => handleToggle(task)} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm ${task.completed ? "line-through text-muted-foreground" : ""}`}>{task.title}</p>
+                  {task.dueDate && <p className="text-xs text-muted-foreground">Due {new Date(task.dueDate).toLocaleDateString()}</p>}
+                </div>
+                <ConfirmDialog title="Delete task?" description="This action cannot be undone." onConfirm={() => handleDelete(task.id)}>
+                  <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="size-3" />
+                  </Button>
+                </ConfirmDialog>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function DocumentsSection({ plantId, onUpdate }: { plantId: string; onUpdate: () => void }) {
+  const [docs, setDocs] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [url, setUrl] = useState("")
+
+  useEffect(() => { getDocuments(plantId).then(setDocs) }, [plantId])
+
+  async function handleCreate() {
+    if (!title.trim() || !url.trim()) return
+    const result = await createDocument({ title: title.trim(), url: url.trim(), plantId })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Document added")
+    setTitle("")
+    setUrl("")
+    setOpen(false)
+    const updated = await getDocuments(plantId)
+    setDocs(updated)
+    onUpdate()
+  }
+
+  async function handleDelete(docId: string) {
+    const result = await deleteDocument(docId)
+    if (!result.success) { toast.error(result.error); return }
+    const updated = await getDocuments(plantId)
+    setDocs(updated)
+    onUpdate()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2"><FileText className="size-4" />Documents</CardTitle>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button variant="outline" size="sm"><Plus className="mr-1.5 size-3.5" />Add Document</Button>} />
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Document</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreate() }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="doc-title">Title</Label>
+                  <Input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Document name" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="doc-url">URL</Label>
+                  <Input id="doc-url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://..." />
+                </div>
+                <Button type="submit" className="w-full">Add Document</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {docs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No documents yet</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((doc: any) => (
+              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="flex-1 min-w-0">
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline">{doc.title}</a>
+                </div>
+                <ConfirmDialog title="Delete document?" description="This action cannot be undone." onConfirm={() => handleDelete(doc.id)}>
+                  <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="size-3" />
+                  </Button>
+                </ConfirmDialog>
               </div>
             ))}
           </div>

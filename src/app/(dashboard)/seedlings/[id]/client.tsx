@@ -1,19 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Sprout, Heart, Ruler, Eye, Activity, Star, Target, GitMerge, Clock, CheckCircle2, XCircle, QrCode, Pencil } from "lucide-react"
+import { Sprout, Heart, Ruler, Eye, Activity, Star, Target, GitMerge, Clock, CheckCircle2, XCircle, QrCode, Pencil, Plus, Trash2, ImageIcon, FileText } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { toggleFavourite, setDisposition, updateSeedling } from "@/server/actions/seedlings"
+import { addImage, setPrimaryImage, deleteImage } from "@/server/actions/images"
+import { createNote, deleteNote } from "@/server/actions/notes"
+import { upsertTraitValue } from "@/server/actions/traits"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TraitBar, TraitText, TraitBoolean } from "@/components/profiles/trait-bar"
 import { GoalMatchCard } from "@/components/profiles/goal-match-card"
@@ -77,6 +82,8 @@ export function SeedlingDetailClient({ seedling }: any) {
     router.refresh()
   }
 
+  function reload() { router.refresh() }
+
   const latestEval = seedling.evaluations?.[0]
   const timeline: { date: Date; label: string }[] = []
   if (seedling.createdAt) timeline.push({ date: new Date(seedling.createdAt), label: "Seedling created" })
@@ -138,6 +145,7 @@ export function SeedlingDetailClient({ seedling }: any) {
                   <Button variant="outline" size="sm" onClick={handleFavourite}>
                     <Heart className={`mr-1.5 size-3.5 ${seedling.isFavourite ? "fill-red-500 text-red-500" : ""}`} />
                   </Button>
+                  <SeedlingImageUpload seedlingId={seedling.id} images={seedling.images ?? []} onUpdate={reload} />
                 </div>
               </div>
 
@@ -210,30 +218,33 @@ export function SeedlingDetailClient({ seedling }: any) {
               </Card>
             )}
 
-            {(seedling.traitValues?.length > 0 || seedling.colour || seedling.fragrance) && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Traits</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  {seedling.colour && <TraitText label="Colour" value={seedling.colour} />}
-                  {seedling.fragrance && <TraitText label="Fragrance" value={seedling.fragrance} />}
-                  {seedling.traitValues?.map((tv: any) => {
-                    const val = Number(tv.value)
-                    const type = tv.trait?.type
-                    if (type === "BOOLEAN" || type === "YES_NO") {
-                      return <TraitBoolean key={tv.id} label={tv.trait.name} value={tv.value === true || tv.value === "true" || tv.value === "Yes"} />
-                    }
-                    if (type === "PERCENTAGE") {
-                      return <TraitText key={tv.id} label={tv.trait.name} value={`${val}%`} />
-                    }
-                    if (!isNaN(val) && type?.startsWith("SCALE")) {
-                      const max = type === "SCALE_1_5" ? 5 : 10
-                      return <TraitBar key={tv.id} label={tv.trait.name} value={val} max={max} />
-                    }
-                    return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />
-                  })}
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Traits</CardTitle>
+                  <TraitValuesEditor seedling={seedling} onUpdate={reload} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {seedling.colour && <TraitText label="Colour" value={seedling.colour} />}
+                {seedling.fragrance && <TraitText label="Fragrance" value={seedling.fragrance} />}
+                {seedling.traitValues?.map((tv: any) => {
+                  const val = Number(tv.value)
+                  const type = tv.trait?.type
+                  if (type === "BOOLEAN" || type === "YES_NO") {
+                    return <TraitBoolean key={tv.id} label={tv.trait.name} value={tv.value === true || tv.value === "true" || tv.value === "Yes"} />
+                  }
+                  if (type === "PERCENTAGE") {
+                    return <TraitText key={tv.id} label={tv.trait.name} value={`${val}%`} />
+                  }
+                  if (!isNaN(val) && type?.startsWith("SCALE")) {
+                    const max = type === "SCALE_1_5" ? 5 : 10
+                    return <TraitBar key={tv.id} label={tv.trait.name} value={val} max={max} />
+                  }
+                  return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />
+                })}
+              </CardContent>
+            </Card>
           </div>
 
           {seedling.evaluations?.length > 1 && (
@@ -263,6 +274,8 @@ export function SeedlingDetailClient({ seedling }: any) {
               <EventTimeline events={timeline} emptyMessage="No timeline events" />
             </CardContent>
           </Card>
+
+          <NotesSection seedlingId={seedling.id} onUpdate={reload} />
         </div>
 
         <div className="space-y-4">
@@ -381,5 +394,211 @@ function CompactStat({ icon: Icon, label, value }: { icon: any; label: string; v
       <p className="text-lg font-semibold tracking-tight">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
+  )
+}
+
+function TraitValuesEditor({ seedling, onUpdate }: { seedling: any; onUpdate: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [values, setValues] = useState<Record<string, any>>({})
+  const [saving, setSaving] = useState(false)
+
+  const traits = seedling.species?.traits ?? []
+  const noSpecies = !seedling.species
+  const noTraits = seedling.species && traits.length === 0
+
+  useEffect(() => {
+    if (!open) return
+    const initial: Record<string, any> = {}
+    seedling.traitValues?.forEach((tv: any) => {
+      initial[tv.traitId] = tv.value
+    })
+    traits.forEach((t: any) => {
+      if (!(t.id in initial)) {
+        if (t.type === "BOOLEAN") initial[t.id] = false
+        else if (t.type === "YES_NO") initial[t.id] = "No"
+        else initial[t.id] = ""
+      }
+    })
+    setValues(initial)
+  }, [open])
+
+  async function handleSave() {
+    setSaving(true)
+    for (const [traitId, value] of Object.entries(values)) {
+      const result = await upsertTraitValue({ traitId, seedlingId: seedling.id, value })
+      if (!result.success) { toast.error(result.error); setSaving(false); return }
+    }
+    setSaving(false)
+    toast.success("Traits updated")
+    setOpen(false)
+    onUpdate()
+  }
+
+  function inputForTrait(trait: any) {
+    const val = values[trait.id] ?? ""
+    switch (trait.type) {
+      case "SCALE_1_5":
+        return <Input type="number" min={1} max={5} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "SCALE_1_10":
+        return <Input type="number" min={1} max={10} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "BOOLEAN":
+        return <Checkbox checked={val === true || val === "true"} onCheckedChange={(v: boolean) => setValues({ ...values, [trait.id]: v })} />
+      case "TEXT":
+        return <Input type="text" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "PERCENTAGE":
+        return (
+          <div className="flex items-center gap-2">
+            <Input type="number" min={0} max={100} value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+        )
+      case "NUMERIC":
+        return <Input type="number" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+      case "YES_NO":
+        return (
+          <Select value={String(val)} onValueChange={(v) => setValues({ ...values, [trait.id]: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Yes">Yes</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      default:
+        return <Input type="text" value={val} onChange={(e) => setValues({ ...values, [trait.id]: e.target.value })} />
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm"><Pencil className="mr-1.5 size-3.5" />Edit Traits</Button>} />
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit Traits</DialogTitle></DialogHeader>
+        {noSpecies ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Assign a species first</p>
+        ) : noTraits ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No traits defined for this species</p>
+        ) : (
+          <div className="space-y-4">
+            {traits.map((trait: any) => (
+              <div key={trait.id} className="space-y-2">
+                <Label>{trait.name}</Label>
+                {inputForTrait(trait)}
+              </div>
+            ))}
+          </div>
+        )}
+        {!noSpecies && !noTraits && (
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SeedlingImageUpload({ seedlingId, images, onUpdate }: { seedlingId: string; images: any[]; onUpdate: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [url, setUrl] = useState("")
+
+  async function handleAddUrl() {
+    if (!url.trim()) return
+    const result = await addImage({ url: url.trim(), seedlingId, isPrimary: images.length === 0 })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Image added")
+    setUrl("")
+    setOpen(false)
+    onUpdate()
+  }
+
+  async function handleSetPrimary(id: string) {
+    await setPrimaryImage(id, "seedling", seedlingId)
+    toast.success("Primary image updated")
+    onUpdate()
+  }
+
+  async function handleDelete(imgId: string) {
+    await deleteImage(imgId, undefined, seedlingId)
+    toast.success("Image removed")
+    onUpdate()
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger render={<Button variant="ghost" size="sm"><ImageIcon className="size-3.5" /></Button>} />
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Image</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleAddUrl() }} className="space-y-4">
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+            <Button type="submit" className="w-full">Add Image</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {images.length > 0 && (
+        <div className="flex gap-1">
+          {images.slice(0, 4).map((img: any) => (
+            <div key={img.id} className="group relative size-8 rounded-md overflow-hidden bg-muted shrink-0">
+              <img src={img.url} alt="" className="size-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-0.5">
+                {!img.isPrimary && (
+                  <button onClick={() => handleSetPrimary(img.id)} className="p-0.5 rounded-full bg-white/20 hover:bg-white/40 text-white" title="Set as primary">
+                    <Star className="size-2.5" />
+                  </button>
+                )}
+                <ConfirmDialog title="Remove image?" description="This action cannot be undone." onConfirm={() => handleDelete(img.id)}>
+                  <button className="p-0.5 rounded-full bg-white/20 hover:bg-white/40 text-white" title="Remove">
+                    <Trash2 className="size-2.5" />
+                  </button>
+                </ConfirmDialog>
+              </div>
+              {img.isPrimary && <div className="absolute top-0.5 left-0.5 size-2 rounded-full bg-primary" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NotesSection({ seedlingId, onUpdate }: { seedlingId: string; onUpdate: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [content, setContent] = useState("")
+  const [title, setTitle] = useState("")
+
+  async function handleCreate() {
+    if (!content.trim()) return
+    const result = await createNote({ content, title: title || undefined })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Note added")
+    setContent("")
+    setTitle("")
+    setOpen(false)
+    onUpdate()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">Notes</CardTitle>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button variant="outline" size="sm"><Plus className="mr-1.5 size-3.5" />Add Note</Button>} />
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreate() }} className="space-y-4">
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} required placeholder="Write a note..." />
+                <Button type="submit" className="w-full">Save Note</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
+      </CardContent>
+    </Card>
   )
 }

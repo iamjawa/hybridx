@@ -20,7 +20,7 @@ export default async function QuickEvalPage(props: { searchParams: Promise<{ spe
     take: 200,
   })
 
-  const species = await prisma.species.findMany({ orderBy: { name: "asc" } })
+  const species = await prisma.species.findMany({ orderBy: { name: "asc" }, include: { traits: { orderBy: { sortOrder: "asc" } } } })
 
   return <QuickEvalClient seedlings={seedlings} species={species} />
 }
