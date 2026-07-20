@@ -22,6 +22,44 @@ export function SpeciesDetailClient({ species }: any) {
   const [traitOpen, setTraitOpen] = useState(false)
   const [traitForm, setTraitForm] = useState({ name: "", slug: "", type: "SCALE_1_10", category: "General", description: "" })
   const [saving, setSaving] = useState(false)
+  const [newFlowerForm, setNewFlowerForm] = useState("")
+  const [newGeneration, setNewGeneration] = useState("")
+
+  async function addFlowerForm() {
+    if (!newFlowerForm.trim()) return
+    const current = species.flowerFormOptions || []
+    const result = await updateSpecies(species.id, { flowerFormOptions: [...current, newFlowerForm.trim()] })
+    if (!result.success) { toast.error(result.error); return }
+    setNewFlowerForm("")
+    toast.success("Flower form added")
+    router.refresh()
+  }
+
+  async function removeFlowerForm(index: number) {
+    const current = species.flowerFormOptions || []
+    const result = await updateSpecies(species.id, { flowerFormOptions: current.filter((_: any, i: number) => i !== index) })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Flower form removed")
+    router.refresh()
+  }
+
+  async function addGeneration() {
+    if (!newGeneration.trim()) return
+    const current = species.generationLabels || []
+    const result = await updateSpecies(species.id, { generationLabels: [...current, newGeneration.trim()] })
+    if (!result.success) { toast.error(result.error); return }
+    setNewGeneration("")
+    toast.success("Generation label added")
+    router.refresh()
+  }
+
+  async function removeGeneration(index: number) {
+    const current = species.generationLabels || []
+    const result = await updateSpecies(species.id, { generationLabels: current.filter((_: any, i: number) => i !== index) })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Generation label removed")
+    router.refresh()
+  }
 
   async function handleAddTrait() {
     setSaving(true)
@@ -152,25 +190,43 @@ export function SpeciesDetailClient({ species }: any) {
 
         <TabsContent value="config" className="mt-6 space-y-6">
           <Card>
-            <CardHeader><CardTitle className="text-base">Generation Labels</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {species.generationLabels?.map((g: string, i: number) => (
-                  <Badge key={i} variant="secondary">{g}</Badge>
-                ))}
+            <CardHeader><CardTitle className="text-base">Flower Forms</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input value={newFlowerForm} onChange={(e) => setNewFlowerForm(e.target.value)} placeholder="e.g. Double, Cupped, Rosette..." />
+                <Button onClick={addFlowerForm} variant="outline" size="sm"><Plus className="size-4" /></Button>
               </div>
+              {(!species.flowerFormOptions || species.flowerFormOptions.length === 0) ? (
+                <p className="text-sm text-muted-foreground">No flower forms configured</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {species.flowerFormOptions.map((f: string, i: number) => (
+                    <Badge key={i} variant="outline" className="gap-1">
+                      {f}
+                      <button onClick={() => removeFlowerForm(i)} className="text-muted-foreground hover:text-foreground ml-1">&times;</button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Flower Forms</CardTitle></CardHeader>
-            <CardContent>
-              {species.flowerFormOptions?.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No flower forms configured</p>
+            <CardHeader><CardTitle className="text-base">Generation Labels</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input value={newGeneration} onChange={(e) => setNewGeneration(e.target.value)} placeholder="e.g. F1, F2, BC1..." />
+                <Button onClick={addGeneration} variant="outline" size="sm"><Plus className="size-4" /></Button>
+              </div>
+              {(!species.generationLabels || species.generationLabels.length === 0) ? (
+                <p className="text-sm text-muted-foreground">No generation labels configured</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {species.flowerFormOptions?.map((f: string, i: number) => (
-                    <Badge key={i} variant="outline">{f}</Badge>
+                  {species.generationLabels.map((g: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="gap-1">
+                      {g}
+                      <button onClick={() => removeGeneration(i)} className="text-muted-foreground hover:text-foreground ml-1">&times;</button>
+                    </Badge>
                   ))}
                 </div>
               )}
