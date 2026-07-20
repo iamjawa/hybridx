@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Download, Loader2 } from "lucide-react"
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Download, Loader2, FileDown } from "lucide-react"
 import Link from "next/link"
 import { parseCSV, validateImport, importPlants } from "@/server/actions/import"
 import { toast } from "sonner"
@@ -32,6 +32,17 @@ const COLUMN_OPTIONS = [
   { value: "pollenParent", label: "Pollen Parent" },
   { value: "skip", label: "— Skip column" },
 ]
+
+function downloadTemplate(type: string) {
+  const csv = type === "rose"
+    ? `Name,Seed Parent,Pollen Parent,Year,Colour,Fragrance,Disease Resistance,Repeat Flowering,Origin,Notes\nPeace,,,1945,Yellow blend,Strong fruity,Good,Yes,France,The most famous rose\nDouble Delight,,,1977,White and red blend,Strong spicy,Moderate,Yes,USA\nGraham Thomas,,,1983,Rich yellow,Strong tea,Good,Yes,UK\nIceberg,,,1958,White,Light sweet,Excellent,Yes,Germany\nMister Lincoln,,,1964,Deep red,Strong damask,Moderate,No,USA`
+    : `Name,Species,Variety Name,Year,Colour,Fragrance,Origin,Status,Notes\nExample Plant 1,Rose,Example Variety,2024,Pink,Light,Local garden,ACTIVE,First plant\nExample Plant 2,Rose,,2023,Red,Strong,,ACTIVE,`
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url; a.download = `${type}-template.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
 
 export function ImportClient() {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -285,8 +296,8 @@ export function ImportClient() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Link href="/templates/rose-template.csv"><Button variant="outline" size="sm">Rose Template</Button></Link>
-            <Link href="/templates/general-template.csv"><Button variant="outline" size="sm">General Template</Button></Link>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate("rose")}><FileDown className="mr-1.5 size-3.5" />Rose Template</Button>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate("general")}><FileDown className="mr-1.5 size-3.5" />General Template</Button>
           </div>
         </CardContent>
       </Card>
