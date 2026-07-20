@@ -1,15 +1,20 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Sprout, Leaf, GitMerge, Star, Target, Flower2, Database } from "lucide-react"
-import { getDashboardStats } from "@/server/actions/dashboard"
 import { DemoTour } from "@/components/demo-tour"
 
 export const dynamic = "force-dynamic"
 
 export default async function DemoPage() {
-  const stats = await getDashboardStats()
-
-  const [plants, crosses, seedlings, goals] = await Promise.all([
+  const [plantCount, crossCount, seedlingCount, seedCount, speciesCount, evaluationCount, goalCount, potentialKeepers, plants, crosses, seedlings, goals] = await Promise.all([
+    prisma.plant.count({ where: { deletedAt: null } }),
+    prisma.cross.count({ where: { deletedAt: null } }),
+    prisma.seedling.count({ where: { deletedAt: null } }),
+    prisma.seed.count({ where: { deletedAt: null } }),
+    prisma.species.count(),
+    prisma.evaluation.count(),
+    prisma.breedingGoal.count(),
+    prisma.seedling.count({ where: { disposition: "SELECTED" } }),
     prisma.plant.findMany({ orderBy: { name: "asc" }, include: { species: true }, take: 6 }),
     prisma.cross.findMany({ orderBy: { createdAt: "desc" }, include: { seedParent: true, pollenParent: true }, take: 6 }),
     prisma.seedling.findMany({ orderBy: { seedlingId: "asc" }, where: { disposition: "SELECTED" }, include: { cross: { include: { seedParent: true, pollenParent: true } } }, take: 6 }),
@@ -48,14 +53,14 @@ export default async function DemoPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DemoStat icon={Leaf} label="Plants" value={stats.plantCount} />
-          <DemoStat icon={GitMerge} label="Crosses" value={stats.crossCount} />
-          <DemoStat icon={Database} label="Seed Batches" value={stats.seedCount} />
-          <DemoStat icon={Sprout} label="Seedlings" value={stats.seedlingCount} />
-          <DemoStat icon={Star} label="Evaluations" value={stats.evaluationCount} />
-          <DemoStat icon={Target} label="Goals" value={goals.length} />
-          <DemoStat icon={Flower2} label="Species" value={stats.speciesCount} />
-          <DemoStat icon={Leaf} label="Breeder Lines" value={stats.potentialKeepers} />
+          <DemoStat icon={Leaf} label="Plants" value={plantCount} />
+          <DemoStat icon={GitMerge} label="Crosses" value={crossCount} />
+          <DemoStat icon={Database} label="Seed Batches" value={seedCount} />
+          <DemoStat icon={Sprout} label="Seedlings" value={seedlingCount} />
+          <DemoStat icon={Star} label="Evaluations" value={evaluationCount} />
+          <DemoStat icon={Target} label="Goals" value={goalCount} />
+          <DemoStat icon={Flower2} label="Species" value={speciesCount} />
+          <DemoStat icon={Leaf} label="Breeder Lines" value={potentialKeepers} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
