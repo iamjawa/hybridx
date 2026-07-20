@@ -170,11 +170,7 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
           icon={Target}
           title="No breeding goals"
           description="Breeding goals help you find your best plants and seedlings. Define what you're breeding for and HybridX will score every plant against your criteria."
-          action={
-            <Dialog>
-              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Create Your First Goal</DialogTrigger>
-            </Dialog>
-          }
+          action={<Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />Create Your First Goal</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

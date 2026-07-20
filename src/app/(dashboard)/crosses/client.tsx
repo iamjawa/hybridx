@@ -179,11 +179,7 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
           icon={GitMerge}
           title="No crosses yet"
           description="Plan your first cross by selecting two parent plants. Crosses are the foundation of every breeding programme."
-          action={
-            <Dialog>
-              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Plan Your First Cross</DialogTrigger>
-            </Dialog>
-          }
+          action={<Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />Plan Your First Cross</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

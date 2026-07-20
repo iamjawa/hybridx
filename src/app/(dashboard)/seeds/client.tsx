@@ -177,11 +177,7 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
           icon={Database}
           title="No seed batches"
           description="Record your first seed harvest from a cross. Seed batches track the full journey from harvest through stratification to germination."
-          action={
-            <Dialog>
-              <DialogTrigger render={<Button variant="outline" />}><Plus className="mr-2 size-4" />Record Seed Batch</DialogTrigger>
-            </Dialog>
-          }
+          action={<Button onClick={() => setOpen(true)} variant="outline"><Plus className="mr-2 size-4" />Record Seed Batch</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

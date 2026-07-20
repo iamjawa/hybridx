@@ -98,11 +98,7 @@ export function SpeciesClient({ species }: any) {
           icon={Flower2}
           title="No species configured"
           description="Configure your breeding species to define traits, generation labels, and flower forms. Species are the foundation of your breeding programme."
-          action={
-            <Dialog>
-              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Add Species</DialogTrigger>
-            </Dialog>
-          }
+          action={<Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />Add Species</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
