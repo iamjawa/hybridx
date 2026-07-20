@@ -5,10 +5,6 @@ export const NAV_ITEMS = [
   { label: "Seedlings", href: "/seedlings", icon: "Sprout" },
   { label: "Species", href: "/species", icon: "Flower2" },
   { label: "Evaluation", href: "/evaluation", icon: "Star" },
-  { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-  { label: "Search", href: "/search", icon: "Search" },
-  { label: "Calendar", href: "/calendar", icon: "Calendar" },
-  { label: "Notes", href: "/notes", icon: "FileText" },
 ] as const
 
 export const SPECIES_DEFAULTS = {

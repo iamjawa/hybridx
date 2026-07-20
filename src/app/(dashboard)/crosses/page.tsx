@@ -3,6 +3,8 @@ import { getSpecies } from "@/server/actions/species"
 import { getPlants } from "@/server/actions/plants"
 import { CrossesClient } from "./client"
 
+export const dynamic = "force-dynamic"
+
 export default async function CrossesPage() {
   const [{ crosses, total, pages }, species, { plants }] = await Promise.all([
     getCrosses(),
