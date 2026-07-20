@@ -1,0 +1,489 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  BREEDER
+  VIEWER
+}
+
+enum PlantStatus {
+  ACTIVE
+  DORMANT
+  DECEASED
+  RETIRED
+  SOLD
+  GIFTED
+}
+
+enum Disposition {
+  SELECTED
+  KEPT
+  CULLED
+  SOLD
+  GIFTED
+  DEAD
+}
+
+enum PollinationMethod {
+  MANUAL
+  OPEN
+  BAG
+  CAGE
+  ISOLATION
+}
+
+enum SeedStage {
+  HARVESTED
+  CLEANED
+  STORED
+  STRATIFYING
+  COLD_STRATIFYING
+  WARM_STRATIFYING
+  GERMINATING
+  GERMINATED
+  FAILED
+}
+
+enum EvaluationType {
+  NUMERIC
+  BOOLEAN
+  TEXT
+  SCALE_1_5
+  SCALE_1_10
+  PERCENTAGE
+  YES_NO
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  userId    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  role           Role            @default(BREEDER)
+  avatarUrl      String?
+  supabaseId     String?         @unique
+  preferences    Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  plants         Plant[]
+  crosses        Cross[]
+  seedlings      Seedling[]
+  evaluations    Evaluation[]
+  pollinationWorked   Pollination[]
+  notes          Note[]
+  auditLogs      AuditLog[]
+  species        Species[]
+  tasks          Task[]
+  documents      Document[]
+
+  @@index([email])
+  @@index([supabaseId])
+}
+
+model Species {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  slug               String   @unique
+  description        String?
+  colorSystem        Json?    @default("{}")
+  flowerFormOptions  String[]
+  breedingTerminology Json?  @default("{\"cross\": \"Cross\",\"seedling\": \"Seedling\",\"generation\": \"Generation\",\"parent\": \"Parent\",\"variety\": \"Variety\"}")
+  generationLabels   String[] @default(["F1", "F2", "F3", "F4", "F5", "BC1", "BC2"])
+  pollenViability    Int?     @default(100)
+  seedViability      Int?     @default(100)
+  customFields       Json?    @default("[]")
+  imageUrl           String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdById        String?
+  createdBy          User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  traits             TraitDefinition[]
+  plants             Plant[]
+  crosses            Cross[]
+  seedlings          Seedling[]
+  locations          Location[]
+  seeds              Seed[]
+}
+
+model TraitDefinition {
+  id          String          @id @default(cuid())
+  speciesId   String
+  species     Species         @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  type        EvaluationType  @default(SCALE_1_10)
+  options     Json?           @default("[]")
+  category    String          @default("General")
+  isActive    Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  values      TraitValue[]
+
+  @@unique([speciesId, slug])
+  @@index([speciesId])
+  @@index([category])
+}
+
+model TraitValue {
+  id        String   @id @default(cuid())
+  traitId   String
+  trait     TraitDefinition @relation(fields: [traitId], references: [id], onDelete: Cascade)
+  plantId   String?
+  plant     Plant?   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  seedlingId String?
+  seedling  Seedling? @relation(fields: [seedlingId], references: [id], onDelete: Cascade)
+  value     Json
+  note      String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([plantId])
+  @@index([seedlingId])
+  @@index([traitId])
+}
+
+model Plant {
+  id             String       @id @default(cuid())
+  name           String
+  varietyName    String?
+  breederId      String?
+  breeder        User?        @relation(fields: [breederId], references: [id], onDelete: SetNull)
+  speciesId      String?
+  species        Species?     @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  origin         String?
+  year           Int?
+  imageUrl       String?
+  description    String?
+  pedigree       Json?        @default("{}")
+  colour         String?
+  fragrance      String?
+  diseaseResistance String?
+  repeatFlowering    Boolean?
+  pollenFertility    Int?     @default(100)
+  seedFertility      Int?     @default(100)
+  awards         Json?        @default("[]")
+  status         PlantStatus  @default(ACTIVE)
+  isBreederLine  Boolean      @default(false)
+  isSeedParent   Boolean      @default(false)
+  isPollenParent Boolean     @default(false)
+  inventoryCount Int?         @default(1)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  customData     Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  images         Image[]
+  traitValues    TraitValue[]
+  note           Note[]
+  crossesAsSeedParent   Cross[] @relation("SeedParent")
+  crossesAsPollenParent Cross[] @relation("PollenParent")
+  seedlingsFrom   Seedling[] @relation("SeedParentPlant")
+  seedlingCrosses Seedling[] @relation("CrossParentPlant")
+  tasks           Task[]
+  documents       Document[]
+
+  @@index([name])
+  @@index([speciesId])
+  @@index([breederId])
+  @@index([status])
+}
+
+model Cross {
+  id              String        @id @default(cuid())
+  speciesId       String?
+  species         Species?      @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  seedParentId    String?
+  seedParent      Plant?        @relation("SeedParent", fields: [seedParentId], references: [id], onDelete: SetNull)
+  pollenParentId  String?
+  pollenParent    Plant?        @relation("PollenParent", fields: [pollenParentId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  crossNumber     String?       @unique
+  plannedDate     DateTime?
+  pollinationDate DateTime?
+  method          PollinationMethod @default(MANUAL)
+  isolation       String?
+  weather         String?
+  pollenStorage   String?
+  tagNumber       String?
+  flowerNumber    Int?
+  fruitDeveloped  Boolean?
+  fruitHarvestDate DateTime?
+  hipDeveloped    Boolean?
+  hipHarvestDate  DateTime?
+  seedCount       Int?
+  notes           String?
+  expectedTraits  Json?         @default("{}")
+  ancestorOverlap Json?         @default("{}")
+  geneticDiversity Float?
+  compatibilityScore Int?
+  crossProbability  Float?
+  isSuccess       Boolean?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  seedlings       Seedling[]
+  pollinations    Pollination[]
+  seeds           Seed[]
+  tasks           Task[]
+
+  @@index([seedParentId])
+  @@index([pollenParentId])
+  @@index([createdById])
+  @@index([crossNumber])
+  @@index([speciesId])
+}
+
+model Pollination {
+  id              String   @id @default(cuid())
+  crossId         String
+  cross           Cross    @relation(fields: [crossId], references: [id], onDelete: Cascade)
+  pollinationDate DateTime @default(now())
+  method          String
+  tagNumber       String?
+  flowerNumber    Int?
+  isolation       String?
+  weather         String?
+  pollenStorage   String?
+  pollinatedById  String?
+  pollinatedBy    User?    @relation(fields: [pollinatedById], references: [id], onDelete: SetNull)
+  notes           String?
+  fruitDeveloped  Boolean?
+  fruitHarvestDate DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([crossId])
+}
+
+model Seed {
+  id                String    @id @default(cuid())
+  crossId           String?
+  cross             Cross?    @relation(fields: [crossId], references: [id], onDelete: SetNull)
+  speciesId         String?
+  species           Species?  @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  batchNumber       String?   @unique
+  harvestDate       DateTime?
+  cleaningDate      DateTime?
+  storageDate       DateTime?
+  storageCondition  String?
+  stage             SeedStage @default(HARVESTED)
+  totalCount        Int       @default(0)
+  viableCount       Int?      @default(0)
+  germinatedCount   Int?      @default(0)
+  failedCount       Int?      @default(0)
+  coldStratDays     Int?      @default(0)
+  warmStratDays     Int?      @default(0)
+  stratificationStart DateTime?
+  germinationDate   DateTime?
+  notes             String?
+  successRate       Float?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  seedlings         Seedling[]
+
+  @@index([crossId])
+  @@index([batchNumber])
+  @@index([speciesId])
+}
+
+model Seedling {
+  id              String       @id @default(cuid())
+  seedlingId      String       @unique
+  year            Int
+  crossNumber     String?
+  crossId         String?
+  cross           Cross?       @relation(fields: [crossId], references: [id], onDelete: SetNull)
+  seedId          String?
+  seed            Seed?        @relation(fields: [seedId], references: [id], onDelete: SetNull)
+  speciesId       String?
+  species         Species?     @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  seedParentId    String?
+  seedParent      Plant?       @relation("SeedParentPlant", fields: [seedParentId], references: [id], onDelete: SetNull)
+  crossParentId   String?
+  crossParent     Plant?       @relation("CrossParentPlant", fields: [crossParentId], references: [id], onDelete: SetNull)
+  generation      String?
+  imageUrl        String?
+  growthNotes     String?
+  flowerNotes     String?
+  fragrance       String?
+  health          Int?
+  diseaseResistance Int?
+  repeatFlowering    Boolean?
+  bloomSize       Float?
+  petalCount      Int?
+  colour          String?
+  ratings         Json?        @default("{}")
+  measurements    Json?        @default("{}")
+  observations    Json?        @default("[]")
+  locationId      String?
+  location        Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  disposition     Disposition?
+  isFavourite     Boolean      @default(false)
+  isShortlisted   Boolean      @default(false)
+  createdById     String?
+  createdBy       User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  images          Image[]
+  traitValues     TraitValue[]
+  evaluations     Evaluation[]
+
+  @@index([year])
+  @@index([crossId])
+  @@index([speciesId])
+  @@index([disposition])
+  @@index([seedlingId])
+}
+
+model Evaluation {
+  id          String         @id @default(cuid())
+  seedlingId  String
+  seedling    Seedling       @relation(fields: [seedlingId], references: [id], onDelete: Cascade)
+  evaluatorId String?
+  evaluator   User?          @relation(fields: [evaluatorId], references: [id], onDelete: SetNull)
+  systemName  String
+  criteria    Json           @default("{}")
+  scores      Json           @default("{}")
+  totalScore  Float?
+  notes       String?
+  isBlind     Boolean        @default(false)
+  date        DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([seedlingId])
+  @@index([evaluatorId])
+  @@index([systemName])
+}
+
+model Image {
+  id          String   @id @default(cuid())
+  url         String
+  thumbnail   String?
+  alt         String?
+  plantId     String?
+  plant       Plant?   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  seedlingId  String?
+  seedling    Seedling? @relation(fields: [seedlingId], references: [id], onDelete: Cascade)
+  isPrimary   Boolean  @default(false)
+  width       Int?
+  height      Int?
+  fileSize    Int?
+  createdAt   DateTime @default(now())
+
+  @@index([plantId])
+  @@index([seedlingId])
+}
+
+model Location {
+  id        String     @id @default(cuid())
+  name      String
+  type      String     @default("BENCH")
+  speciesId String?
+  species   Species?   @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  parentId  String?
+  parent    Location?  @relation("Sublocations", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Location[] @relation("Sublocations")
+  mapData   Json?      @default("{}")
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  plants    Plant[]
+  seedlings Seedling[]
+
+  @@index([speciesId])
+  @@index([type])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String?
+  content   String
+  plantId   String?
+  plant     Plant?   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  isPrivate Boolean  @default(false)
+  tags      String[] @default([])
+  createdById String?
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([plantId])
+  @@index([createdById])
+  @@index([tags])
+}
+
+model WeatherRecord {
+  id          String   @id @default(cuid())
+  date        DateTime
+  temperatureHigh Float?
+  temperatureLow  Float?
+  rainfall    Float?
+  humidity    Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@unique([date])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  crossId     String?
+  cross       Cross?   @relation(fields: [crossId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo  User?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  plantId     String?
+  plant       Plant?   @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@index([plantId])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  mimeType  String?
+  size      Int?
+  plantId   String?
+  plant     Plant?   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  uploadedById String?
+  uploadedBy User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([plantId])
+  @@index([uploadedById])
+}
