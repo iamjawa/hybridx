@@ -3,6 +3,11 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/lib/types"
+import { auditLog } from "@/lib/audit"
+import { requireUserId } from "@/lib/require-user"
+import { trackEvent, EVENTS } from "@/lib/tracking"
+import { CreateSeedlingSchema, CreateEvaluationSchema } from "@/lib/validations"
+import { z } from "zod/v4"
 
 export async function getSeedlings(params?: {
   speciesId?: string
@@ -14,7 +19,8 @@ export async function getSeedlings(params?: {
   limit?: number
 }) {
   const { speciesId, crossId, year, disposition, search, page = 1, limit = 20 } = params || {}
-  const where: any = {}
+  const userId = await requireUserId()
+  const where: any = { deletedAt: null, createdById: userId }
   if (speciesId) where.speciesId = speciesId
   if (crossId) where.crossId = crossId
   if (year) where.year = year
@@ -48,6 +54,7 @@ export async function getSeedlingById(id: string) {
       traitValues: { include: { trait: true } },
       evaluations: { include: { evaluator: true }, orderBy: { date: "desc" } },
       location: true,
+      goalScores: { include: { goal: true }, orderBy: { overallScore: "desc" } },
     },
   })
 }
@@ -63,17 +70,26 @@ export async function createSeedling(data: {
   notes?: string
 }): Promise<ActionResult> {
   try {
-    await prisma.seedling.create({ data: data as any })
+    const userId = await requireUserId()
+    const parsed = CreateSeedlingSchema.parse(data)
+    const seedling = await prisma.seedling.create({ data: { ...parsed, createdById: userId } as any })
+    auditLog({ action: "create", entity: "Seedling", entityId: seedling.id })
+    trackEvent(EVENTS.SEEDLING_CREATED, { seedlingId: parsed.seedlingId })
     revalidatePath("/seedlings")
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) return { success: false, error: error.issues.map(e => e.message).join(", ") }
     return { success: false, error: "Failed to create seedling" }
   }
 }
 
 export async function updateSeedling(id: string, data: Record<string, any>): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const existing = await prisma.seedling.findFirst({ where: { id, createdById: userId } })
+    if (!existing) return { success: false, error: "Seedling not found" }
     await prisma.seedling.update({ where: { id }, data })
+    auditLog({ action: "update", entity: "Seedling", entityId: id })
     revalidatePath("/seedlings")
     return { success: true }
   } catch (error) {
@@ -90,10 +106,14 @@ export async function createEvaluation(data: {
   notes?: string
 }): Promise<ActionResult> {
   try {
-    await prisma.evaluation.create({ data: data as any })
+    const userId = await requireUserId()
+    const parsed = CreateEvaluationSchema.parse(data)
+    await prisma.evaluation.create({ data: { ...parsed, evaluatorId: userId } as any })
+    trackEvent(EVENTS.EVALUATION_COMPLETED, { seedlingId: parsed.seedlingId })
     revalidatePath("/evaluation")
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) return { success: false, error: error.issues.map(e => e.message).join(", ") }
     return { success: false, error: "Failed to create evaluation" }
   }
 }
@@ -103,6 +123,9 @@ export async function setDisposition(
   disposition: string
 ): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const existing = await prisma.seedling.findFirst({ where: { id: seedlingId, createdById: userId } })
+    if (!existing) return { success: false, error: "Seedling not found" }
     await prisma.seedling.update({
       where: { id: seedlingId },
       data: { disposition: disposition as any },
@@ -116,7 +139,8 @@ export async function setDisposition(
 
 export async function toggleFavourite(seedlingId: string): Promise<ActionResult> {
   try {
-    const seedling = await prisma.seedling.findUnique({ where: { id: seedlingId }, select: { isFavourite: true } })
+    const userId = await requireUserId()
+    const seedling = await prisma.seedling.findFirst({ where: { id: seedlingId, createdById: userId }, select: { isFavourite: true } })
     if (!seedling) return { success: false, error: "Seedling not found" }
     await prisma.seedling.update({
       where: { id: seedlingId },

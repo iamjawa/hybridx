@@ -4,13 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
-import { GitMerge, Sprout, Calendar, Thermometer, Hash, Activity } from "lucide-react"
+import { GitMerge, Sprout, Calendar, Hash, Database } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { createSeed } from "@/server/actions/seeds"
+import { toast } from "sonner"
 
 export function CrossDetailClient({ cross }: any) {
+  const router = useRouter()
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Crosses", href: "/crosses" }, { label: "Cross detail" }]} />
       <div className="flex items-center gap-4">
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
           <GitMerge className="size-6 text-primary" />
@@ -26,6 +31,24 @@ export function CrossDetailClient({ cross }: any) {
             {cross.crossNumber ?? "No number"}{cross.species ? ` · ${cross.species.name}` : ""}
           </p>
         </div>
+        <Button
+          variant="outline" size="sm"
+          onClick={async () => {
+            const result = await createSeed({
+              crossId: cross.id,
+              speciesId: cross.speciesId,
+              batchNumber: `${cross.crossNumber ?? "BATCH"}-B1`,
+              totalCount: 0,
+              notes: cross.notes ? `From cross: ${cross.notes}` : undefined,
+            })
+            if (!result.success) { toast.error(result.error); return }
+            toast.success("Seed batch created")
+            router.refresh()
+          }}
+        >
+          <Database className="mr-1.5 size-3.5" />
+          Record Seeds
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -129,6 +152,22 @@ export function CrossDetailClient({ cross }: any) {
             {cross.weather && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Weather</p><p className="text-sm font-medium">{cross.weather}</p></CardContent></Card>}
             {cross.pollenStorage && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Pollen Storage</p><p className="text-sm font-medium">{cross.pollenStorage}</p></CardContent></Card>}
           </div>
+          {cross.seeds?.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Seed Batches</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {cross.seeds.map((seed: any) => (
+                    <Link key={seed.id} href={`/seeds/${seed.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                      <Database className="size-4 text-muted-foreground" />
+                      <span className="text-sm">{seed.batchNumber ?? "Unnamed batch"}</span>
+                      <span className="text-xs text-muted-foreground">{seed.totalCount} seeds</span>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

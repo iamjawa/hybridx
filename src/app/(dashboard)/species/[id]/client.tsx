@@ -9,37 +9,51 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Flower2, Plus, Trash2, GripVertical } from "lucide-react"
+import { Flower2, Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { createTrait, deleteTrait, updateSpecies } from "@/server/actions/species"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function SpeciesDetailClient({ species }: any) {
   const router = useRouter()
   const [traits, setTraits] = useState(species.traits || [])
   const [traitOpen, setTraitOpen] = useState(false)
   const [traitForm, setTraitForm] = useState({ name: "", slug: "", type: "SCALE_1_10", category: "General", description: "" })
+  const [saving, setSaving] = useState(false)
 
   async function handleAddTrait() {
-    await createTrait({
-      speciesId: species.id,
-      name: traitForm.name,
-      slug: traitForm.slug.toLowerCase().replace(/\s+/g, "-"),
-      description: traitForm.description || undefined,
-      type: traitForm.type,
-      category: traitForm.category,
-    })
-    setTraitOpen(false)
-    setTraitForm({ name: "", slug: "", type: "SCALE_1_10", category: "General", description: "" })
-    router.refresh()
+    setSaving(true)
+    try {
+      const result = await createTrait({
+        speciesId: species.id,
+        name: traitForm.name,
+        slug: traitForm.slug.toLowerCase().replace(/\s+/g, "-"),
+        description: traitForm.description || undefined,
+        type: traitForm.type,
+        category: traitForm.category,
+      })
+      if (!result.success) { toast.error(result.error); return }
+      toast.success("Trait added")
+      setTraitOpen(false)
+      setTraitForm({ name: "", slug: "", type: "SCALE_1_10", category: "General", description: "" })
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDeleteTrait(id: string) {
-    await deleteTrait(id)
+    const result = await deleteTrait(id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Trait deleted")
     router.refresh()
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Species", href: "/species" }, { label: species.name }]} />
       <div className="flex items-center gap-4">
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
           <Flower2 className="size-6 text-primary" />
@@ -98,7 +112,10 @@ export function SpeciesDetailClient({ species }: any) {
                     <Label htmlFor="trait-category">Category</Label>
                     <Input id="trait-category" value={traitForm.category} onChange={(e) => setTraitForm({ ...traitForm, category: e.target.value })} />
                   </div>
-                  <Button type="submit" className="w-full">Add Trait</Button>
+                  <Button type="submit" disabled={saving} className="w-full">
+                    {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                    {saving ? "Saving..." : "Add Trait"}
+                  </Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -117,9 +134,15 @@ export function SpeciesDetailClient({ species }: any) {
                       <p className="text-xs text-muted-foreground">{trait.slug} · {trait.type} · {trait.category}</p>
                     </div>
                     <Badge variant="secondary">{trait.category}</Badge>
-                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrait(trait.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <ConfirmDialog
+                      title="Delete trait?"
+                      description="This will permanently remove this trait and all associated data. This action cannot be undone."
+                      onConfirm={() => handleDeleteTrait(trait.id)}
+                    >
+                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </ConfirmDialog>
                   </CardContent>
                 </Card>
               ))}

@@ -2,9 +2,15 @@ export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Plants", href: "/plants", icon: "Leaf" },
   { label: "Crosses", href: "/crosses", icon: "GitMerge" },
+  { label: "Seeds", href: "/seeds", icon: "Database" },
   { label: "Seedlings", href: "/seedlings", icon: "Sprout" },
   { label: "Species", href: "/species", icon: "Flower2" },
+  { label: "Goals", href: "/goals", icon: "Target" },
   { label: "Evaluation", href: "/evaluation", icon: "Star" },
+  { label: "Import", href: "/import", icon: "Upload" },
+  { label: "Settings", href: "/settings", icon: "Settings" },
+  { label: "Feedback", href: "/feedback", icon: "MessageSquareText" },
+  { label: "Search", href: "/search", icon: "Search" },
 ] as const
 
 export const SPECIES_DEFAULTS = {

@@ -8,10 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Leaf, Plus, Search, Trash2 } from "lucide-react"
+import { Leaf, Plus, Search, Trash2, Loader2 } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { PaginationBar } from "@/components/ui/pagination-bar"
 import Link from "next/link"
 import { getPlants, createPlant, deletePlant } from "@/server/actions/plants"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function PlantsClient({ initialPlants, total, pages, species }: any) {
   const router = useRouter()
@@ -21,6 +25,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ name: "", speciesId: "", description: "", origin: "", year: "" })
+  const [saving, setSaving] = useState(false)
 
   async function handleSearch(query: string) {
     setSearch(query)
@@ -35,24 +40,39 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
   }
 
   async function handleCreate() {
-    await createPlant({
-      name: form.name,
-      speciesId: form.speciesId || undefined,
-      description: form.description || undefined,
-      origin: form.origin || undefined,
-      year: form.year ? parseInt(form.year) : undefined,
-    })
-    setOpen(false)
-    setForm({ name: "", speciesId: "", description: "", origin: "", year: "" })
-    const result = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined })
+    setSaving(true)
+    try {
+      const result = await createPlant({
+        name: form.name,
+        speciesId: form.speciesId || undefined,
+        description: form.description || undefined,
+        origin: form.origin || undefined,
+        year: form.year ? parseInt(form.year) : undefined,
+      })
+      if (!result.success) { toast.error(result.error); return }
+      toast.success("Plant created")
+      setOpen(false)
+      setForm({ name: "", speciesId: "", description: "", origin: "", year: "" })
+      const plantsResult = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined })
+      setPlants(plantsResult.plants)
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handlePageChange(newPage: number) {
+    setPage(newPage)
+    const result = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined, page: newPage })
     setPlants(result.plants)
-    router.refresh()
   }
 
   async function handleDelete(id: string) {
-    await deletePlant(id)
-    const result = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined })
-    setPlants(result.plants)
+    const result = await deletePlant(id)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Plant deleted")
+    const plantsResult = await getPlants({ search: search || undefined, speciesId: speciesFilter || undefined })
+    setPlants(plantsResult.plants)
     router.refresh()
   }
 
@@ -102,7 +122,10 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
                 <Label htmlFor="year">Year</Label>
                 <Input id="year" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
               </div>
-              <Button type="submit" className="w-full">Create Plant</Button>
+              <Button type="submit" disabled={saving} className="w-full">
+                {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {saving ? "Saving..." : "Create Plant"}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -132,30 +155,16 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
       </div>
 
       {plants.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-16">
-            <Leaf className="size-12 text-muted-foreground/40" />
-            <div className="text-center">
-              <p className="text-lg font-medium">No plants found</p>
-              <p className="text-sm text-muted-foreground">Add your first plant to start tracking your collection.</p>
-            </div>
+        <EmptyState
+          icon={Leaf}
+          title="No plants yet"
+          description="You haven't added any parent plants yet. Add your first plant to begin tracking your breeding collection."
+          action={
             <Dialog>
-              <DialogTrigger render={<Button variant="outline" />}>
-                <Plus className="mr-2 size-4" />Add Plant
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Add Plant</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); handleCreate() }} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name-empty">Name *</Label>
-                    <Input id="name-empty" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-                  </div>
-                  <Button type="submit" className="w-full">Create Plant</Button>
-                </form>
-              </DialogContent>
+              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Add Your First Plant</DialogTrigger>
             </Dialog>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {plants.map((plant: any) => (
@@ -169,17 +178,19 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
                         <p className="text-sm text-muted-foreground truncate">{plant.varietyName}</p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleDelete(plant.id)
-                      }}
+                    <ConfirmDialog
+                      title="Delete plant?"
+                      description={`This will permanently remove ${plant.name} and all associated data. This action cannot be undone.`}
+                      onConfirm={() => handleDelete(plant.id)}
                     >
-                      <Trash2 className="size-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </ConfirmDialog>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {plant.species && <Badge variant="secondary">{plant.species.name}</Badge>}
@@ -193,6 +204,7 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
           ))}
         </div>
       )}
+      <PaginationBar page={page} pages={pages} total={total} onPageChange={handlePageChange} />
     </div>
   )
 }

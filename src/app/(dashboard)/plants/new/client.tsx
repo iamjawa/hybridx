@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createPlant } from "@/server/actions/plants"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 
 export function PlantNewClient({ species }: any) {
@@ -93,6 +93,7 @@ export function PlantNewClient({ species }: any) {
               <Textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
             <Button type="submit" disabled={saving} className="w-full">
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {saving ? "Saving..." : "Create Plant"}
             </Button>
           </form>

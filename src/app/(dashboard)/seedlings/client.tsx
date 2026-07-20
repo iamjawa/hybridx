@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sprout, Heart, Search } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { getSeedlings, toggleFavourite, setDisposition } from "@/server/actions/seedlings"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { PaginationBar } from "@/components/ui/pagination-bar"
 
 export function SeedlingsClient({ initialSeedlings, total, pages, species }: any) {
   const router = useRouter()
   const [seedlings, setSeedlings] = useState(initialSeedlings)
+  const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [speciesFilter, setSpeciesFilter] = useState("")
   const [dispositionFilter, setDispositionFilter] = useState("")
@@ -31,12 +35,21 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
 
   async function handleToggleFavourite(id: string) {
     await toggleFavourite(id)
+    toast.success("Favourite toggled")
     filter()
   }
 
   async function handleDisposition(id: string, disposition: string) {
-    await setDisposition(id, disposition)
+    const result = await setDisposition(id, disposition)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success(`Disposition set to ${disposition}`)
     filter()
+  }
+
+  async function handlePageChange(newPage: number) {
+    setPage(newPage)
+    const result = await getSeedlings({ search: search || undefined, speciesId: speciesFilter || undefined, disposition: dispositionFilter || undefined, page: newPage })
+    setSeedlings(result.seedlings)
   }
 
   const dispositionColors: Record<string, string> = {
@@ -89,13 +102,14 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
       </div>
 
       {seedlings.length === 0 ? (
-        <Card><CardContent className="flex flex-col items-center gap-4 py-16">
-          <Sprout className="size-12 text-muted-foreground/40" />
-          <div className="text-center">
-            <p className="text-lg font-medium">No seedlings found</p>
-            <p className="text-sm text-muted-foreground">Seedlings appear here when you harvest seeds from crosses.</p>
-          </div>
-        </CardContent></Card>
+        <EmptyState
+          icon={Sprout}
+          title="No seedlings yet"
+          description="Seedlings appear when you create seed batches and record germination. They can also be created in batches from the seed detail page."
+          action={
+            <Link href="/seeds"><Button variant="outline">Go to Seeds</Button></Link>
+          }
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {seedlings.map((s: any) => (
@@ -137,6 +151,7 @@ export function SeedlingsClient({ initialSeedlings, total, pages, species }: any
           ))}
         </div>
       )}
+      <PaginationBar page={page} pages={pages} total={total} onPageChange={handlePageChange} />
     </div>
   )
 }

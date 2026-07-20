@@ -3,160 +3,268 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sprout, Heart, Ruler, Eye, Activity, Star } from "lucide-react"
+import { Sprout, Heart, Ruler, Eye, Activity, Star, Target, GitMerge, Clock, CheckCircle2, XCircle, QrCode } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { toggleFavourite, setDisposition } from "@/server/actions/seedlings"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { TraitBar, TraitText } from "@/components/profiles/trait-bar"
+import { GoalMatchCard } from "@/components/profiles/goal-match-card"
+import { EventTimeline } from "@/components/profiles/event-timeline"
+
+const dispositionConfig: Record<string, { label: string; icon: any; color: string; activeColor: string }> = {
+  SELECTED: { label: "Select", icon: CheckCircle2, color: "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10", activeColor: "bg-emerald-500 text-white hover:bg-emerald-600" },
+  KEPT: { label: "Keep", icon: Heart, color: "border-blue-500/30 text-blue-600 hover:bg-blue-500/10", activeColor: "bg-blue-500 text-white hover:bg-blue-600" },
+  CULLED: { label: "Cull", icon: XCircle, color: "border-red-500/30 text-red-600 hover:bg-red-500/10", activeColor: "bg-red-500 text-white hover:bg-red-600" },
+  SOLD: { label: "Sell", icon: Target, color: "border-amber-500/30 text-amber-600 hover:bg-amber-500/10", activeColor: "bg-amber-500 text-white hover:bg-amber-600" },
+  GIFTED: { label: "Gift", icon: Star, color: "border-purple-500/30 text-purple-600 hover:bg-purple-500/10", activeColor: "bg-purple-500 text-white hover:bg-purple-600" },
+  DEAD: { label: "Dead", icon: XCircle, color: "border-neutral-500/30 text-neutral-600 hover:bg-neutral-500/10", activeColor: "bg-neutral-500 text-white hover:bg-neutral-600" },
+}
 
 export function SeedlingDetailClient({ seedling }: any) {
   const router = useRouter()
 
   async function handleFavourite() {
     await toggleFavourite(seedling.id)
+    toast.success("Favourite toggled")
     router.refresh()
   }
 
   async function handleDisposition(disposition: string) {
-    await setDisposition(seedling.id, disposition)
+    const result = await setDisposition(seedling.id, disposition)
+    if (!result.success) { toast.error(result.error); return }
+    toast.success(`Marked as ${dispositionConfig[disposition]?.label ?? disposition}`)
     router.refresh()
   }
 
+  const latestEval = seedling.evaluations?.[0]
+  const timeline: { date: Date; label: string }[] = []
+  if (seedling.createdAt) timeline.push({ date: new Date(seedling.createdAt), label: "Seedling created" })
+  if (seedling.evaluations?.length > 0) {
+    seedling.evaluations.forEach((e: any) => {
+      if (e.date) timeline.push({ date: new Date(e.date), label: `Evaluation: ${e.systemName}${e.totalScore != null ? ` — ${e.totalScore}/10` : ""}` })
+    })
+  }
+  if (seedling.disposition) {
+    timeline.push({ date: new Date(seedling.updatedAt ?? seedling.createdAt), label: `Disposition set to ${seedling.disposition}` })
+  }
+  timeline.sort((a, b) => b.date.getTime() - a.date.getTime())
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
-          <Sprout className="size-6 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{seedling.seedlingId}</h1>
-            {seedling.disposition && <Badge>{seedling.disposition}</Badge>}
+    <div className="space-y-8">
+      <Breadcrumbs items={[{ label: "Seedlings", href: "/seedlings" }, { label: seedling.seedlingId }]} />
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <div className="aspect-[3/1] sm:aspect-[5/1] bg-gradient-to-br from-emerald-500/5 to-muted flex items-center justify-center">
+              {seedling.images?.[0] ? (
+                <img src={seedling.images[0].url} alt={seedling.seedlingId} className="size-full object-cover" />
+              ) : (
+                <Sprout className="size-12 text-muted-foreground/20" />
+              )}
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-3xl font-bold tracking-tight">{seedling.seedlingId}</h1>
+                    {seedling.disposition && (
+                      <Badge className={
+                        seedling.disposition === "SELECTED" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" :
+                        seedling.disposition === "KEPT" ? "border-blue-500/30 bg-blue-500/10 text-blue-500" :
+                        seedling.disposition === "CULLED" ? "border-red-500/30 bg-red-500/10 text-red-500" :
+                        "border-neutral-500/30 bg-neutral-500/10 text-neutral-500"
+                      } variant="outline">{seedling.disposition}</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {seedling.cross?.seedParent?.name ?? "?"} × {seedling.cross?.pollenParent?.name ?? "?"}
+                    {seedling.generation ? ` · ${seedling.generation}` : ""}
+                    {seedling.species ? ` · ${seedling.species.name}` : ""}
+                    · Year {seedling.year}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Link href={`/evaluation/quick`}>
+                    <Button variant="default" size="sm"><Star className="mr-1.5 size-3.5" />Evaluate</Button>
+                  </Link>
+                  <Link href={`/label?type=seedling&id=${seedling.id}`} target="_blank">
+                    <Button variant="outline" size="sm"><QrCode className="mr-1.5 size-3.5" />Label</Button>
+                  </Link>
+                  <Button variant="outline" size="sm" onClick={handleFavourite}>
+                    <Heart className={`mr-1.5 size-3.5 ${seedling.isFavourite ? "fill-red-500 text-red-500" : ""}`} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(dispositionConfig).map(([key, config]) => {
+                  const isActive = seedling.disposition === key
+                  return (
+                    <Button
+                      key={key}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleDisposition(key)}
+                      className={isActive ? config.activeColor : config.color}
+                    >
+                      <config.icon className="mr-1.5 size-3.5" />
+                      {config.label}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Year {seedling.year}{seedling.generation ? ` · ${seedling.generation}` : ""}{seedling.species ? ` · ${seedling.species.name}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleFavourite}>
-            <Heart className={`mr-2 size-4 ${seedling.isFavourite ? "fill-red-500 text-red-500" : ""}`} />
-            {seedling.isFavourite ? "Favourited" : "Favourite"}
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Ruler className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Bloom Size</p><p className="text-sm font-medium">{seedling.bloomSize ? `${seedling.bloomSize}cm` : "—"}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Activity className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Health</p><p className="text-sm font-medium">{seedling.health != null ? `${seedling.health}/10` : "—"}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Eye className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Disease Resistance</p><p className="text-sm font-medium">{seedling.diseaseResistance != null ? `${seedling.diseaseResistance}/10` : "—"}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Star className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Petal Count</p><p className="text-sm font-medium">{seedling.petalCount ?? "—"}</p></div>
-        </CardContent></Card>
-      </div>
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+            <CompactStat icon={Ruler} label="Bloom Size" value={seedling.bloomSize ? `${seedling.bloomSize}cm` : "—"} />
+            <CompactStat icon={Activity} label="Health" value={seedling.health != null ? `${seedling.health}/10` : "—"} />
+            <CompactStat icon={Eye} label="Disease Res." value={seedling.diseaseResistance != null ? `${seedling.diseaseResistance}/10` : "—"} />
+            <CompactStat icon={Star} label="Petals" value={seedling.petalCount ?? "—"} />
+          </div>
 
-      <div className="flex gap-4">
-        {seedling.cross?.seedParent && (
-          <Card className="flex-1"><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Seed Parent</p>
-            <Link href={`/plants/${seedling.cross.seedParent.id}`} className="mt-1 block text-sm font-medium hover:text-primary">
-              {seedling.cross.seedParent.name}
-            </Link>
-          </CardContent></Card>
-        )}
-        {seedling.cross?.pollenParent && (
-          <Card className="flex-1"><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Pollen Parent</p>
-            <Link href={`/plants/${seedling.cross.pollenParent.id}`} className="mt-1 block text-sm font-medium hover:text-primary">
-              {seedling.cross.pollenParent.name}
-            </Link>
-          </CardContent></Card>
-        )}
-      </div>
+          {latestEval && (
+            <Card className="border-2 border-primary/10">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Latest Evaluation</span>
+                  {latestEval.totalScore != null && (
+                    <span className="text-2xl font-bold text-primary">{latestEval.totalScore}</span>
+                  )}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{latestEval.systemName} · {new Date(latestEval.date).toLocaleDateString()}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {latestEval.scores && typeof latestEval.scores === "object" && Object.entries(latestEval.scores).map(([key, val]: any) => (
+                    <TraitBar key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={val} max={10} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-      <div className="flex flex-wrap gap-2">
-        {["SELECTED", "KEPT", "CULLED", "SOLD", "GIFTED", "DEAD"].map((d) => (
-          <Button
-            key={d}
-            variant={seedling.disposition === d ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleDisposition(d)}
-          >
-            {d}
-          </Button>
-        ))}
-      </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {(seedling.cross?.seedParent || seedling.cross?.pollenParent) && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><GitMerge className="size-4" />Parents</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {seedling.cross?.seedParent && (
+                    <Link href={`/plants/${seedling.cross.seedParent.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                      <div className="size-2 rounded-full bg-rose-500/60 shrink-0" />
+                      <div><p className="text-sm font-medium">{seedling.cross.seedParent.name}</p><p className="text-xs text-muted-foreground">Seed Parent (♀)</p></div>
+                    </Link>
+                  )}
+                  {seedling.cross?.pollenParent && (
+                    <Link href={`/plants/${seedling.cross.pollenParent.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                      <div className="size-2 rounded-full bg-blue-500/60 shrink-0" />
+                      <div><p className="text-sm font-medium">{seedling.cross.pollenParent.name}</p><p className="text-xs text-muted-foreground">Pollen Parent (♂)</p></div>
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-      <Tabs defaultValue="details">
-        <TabsList>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="evaluations">Evaluations</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-        </TabsList>
+            {(seedling.traitValues?.length > 0 || seedling.colour || seedling.fragrance) && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Traits</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {seedling.colour && <TraitText label="Colour" value={seedling.colour} />}
+                  {seedling.fragrance && <TraitText label="Fragrance" value={seedling.fragrance} />}
+                  {seedling.traitValues?.map((tv: any) => {
+                    const val = Number(tv.value)
+                    if (!isNaN(val)) return <TraitBar key={tv.id} label={tv.trait?.name ?? "Trait"} value={val} />
+                    return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-        <TabsContent value="details" className="mt-6 space-y-4">
-          {seedling.colour && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Colour</p><p className="mt-1 text-sm font-medium">{seedling.colour}</p></CardContent></Card>}
-          {seedling.fragrance && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fragrance</p><p className="mt-1 text-sm font-medium">{seedling.fragrance}</p></CardContent></Card>}
-          {seedling.growthNotes && <Card><CardHeader><CardTitle className="text-base">Growth Notes</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{seedling.growthNotes}</p></CardContent></Card>}
-          {seedling.flowerNotes && <Card><CardHeader><CardTitle className="text-base">Flower Notes</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{seedling.flowerNotes}</p></CardContent></Card>}
-        </TabsContent>
-
-        <TabsContent value="evaluations" className="mt-6">
-          {seedling.evaluations?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No evaluations yet</CardContent></Card>
-          ) : (
-            <div className="space-y-4">
-              {seedling.evaluations.map((e: any) => (
-                <Card key={e.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-sm font-medium">{e.systemName}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString()}</p></div>
-                      {e.totalScore != null && (
-                        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-                          <span className="text-lg font-semibold">{e.totalScore}</span>
-                        </div>
-                      )}
+          {seedling.evaluations?.length > 1 && (
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Evaluation History</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {seedling.evaluations.map((e: any) => (
+                  <div key={e.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-medium">{e.systemName}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString()}</p>
                     </div>
-                    {e.notes && <p className="mt-2 text-sm text-muted-foreground">{e.notes}</p>}
-                  </CardContent>
-                </Card>
+                    {e.totalScore != null && (
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                        <span className="text-sm font-semibold">{e.totalScore}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Clock className="size-4" />Timeline</CardTitle></CardHeader>
+            <CardContent>
+              <EventTimeline events={timeline} emptyMessage="No timeline events" />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Quick Info</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between"><span className="text-xs text-muted-foreground">Year</span><span className="text-sm font-medium">{seedling.year}</span></div>
+              {seedling.generation && <div className="flex justify-between"><span className="text-xs text-muted-foreground">Generation</span><span className="text-sm font-medium">{seedling.generation}</span></div>}
+              {seedling.petalCount != null && <div className="flex justify-between"><span className="text-xs text-muted-foreground">Petals</span><span className="text-sm font-medium">{seedling.petalCount}</span></div>}
+              {seedling.bloomSize != null && <div className="flex justify-between"><span className="text-xs text-muted-foreground">Bloom Size</span><span className="text-sm font-medium">{seedling.bloomSize}cm</span></div>}
+              <div className="flex justify-between"><span className="text-xs text-muted-foreground">Evaluations</span><span className="text-sm font-medium">{seedling.evaluations?.length ?? 0}</span></div>
+            </CardContent>
+          </Card>
+
+          {seedling.goalScores?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">Goal Matches</p>
+              {seedling.goalScores.map((gs: any) => (
+                <GoalMatchCard
+                  key={gs.id}
+                  goalName={gs.goal?.name ?? "Unknown goal"}
+                  goalId={gs.goalId}
+                  overallScore={gs.overallScore}
+                  breakdown={Array.isArray(gs.breakdown) ? gs.breakdown : undefined}
+                />
               ))}
             </div>
           )}
-        </TabsContent>
 
-        <TabsContent value="traits" className="mt-6">
-          {seedling.traitValues?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No trait values recorded</CardContent></Card>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {seedling.traitValues.map((tv: any) => (
-                <Card key={tv.id}><CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">{tv.trait?.name}</p>
-                  <p className="mt-1 text-sm font-medium">{String(tv.value)}</p>
-                </CardContent></Card>
-              ))}
-            </div>
+          {(seedling.growthNotes || seedling.flowerNotes) && (
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                {seedling.growthNotes && <p>{seedling.growthNotes}</p>}
+                {seedling.flowerNotes && <p>{seedling.flowerNotes}</p>}
+              </CardContent>
+            </Card>
           )}
-        </TabsContent>
 
-        <TabsContent value="notes" className="mt-6">
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Notes feature coming soon
-          </CardContent></Card>
-        </TabsContent>
-      </Tabs>
+          <Link href={`/crosses/new?seedParentId=${seedling.cross?.seedParentId}`}>
+            <Button variant="outline" size="sm" className="w-full"><GitMerge className="mr-2 size-4" />Use as Parent</Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CompactStat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border bg-card p-4 text-center space-y-1">
+      <Icon className="size-4 mx-auto text-muted-foreground" />
+      <p className="text-lg font-semibold tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   )
 }

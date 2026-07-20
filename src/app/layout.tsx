@@ -21,9 +21,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>
+          <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-background focus:p-3 focus:text-sm focus:font-medium focus:ring-2 focus:ring-primary">
+            Skip to main content
+          </a>
           <SidebarProvider>
             <AppSidebar />
-            <main className="flex-1">
+            <main id="main-content" className="flex-1">
               <div className="flex h-full flex-col">
                 <header className="flex h-14 items-center gap-4 border-b px-6">
                   <SidebarTrigger />

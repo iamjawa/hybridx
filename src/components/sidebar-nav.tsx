@@ -22,14 +22,18 @@ import {
   Sprout,
   Flower2,
   Star,
-  BarChart3,
+  Database,
+  Target,
+  Upload,
   Search,
-  Calendar,
-  FileText,
+  Settings,
+  MessageSquareText,
   Moon,
   Sun,
+  LogOut,
 } from "lucide-react"
 import { useTheme } from "next-themes"
+import { signOut } from "@/server/actions/auth"
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -38,10 +42,12 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Sprout,
   Flower2,
   Star,
-  BarChart3,
+  Database,
+  Target,
+  Upload,
   Search,
-  Calendar,
-  FileText,
+  Settings,
+  MessageSquareText,
 }
 
 export function AppSidebar() {
@@ -102,6 +108,15 @@ export function AppSidebar() {
             >
               {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
               <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => signOut()}
+              tooltip="Sign out"
+            >
+              <LogOut className="size-4" />
+              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

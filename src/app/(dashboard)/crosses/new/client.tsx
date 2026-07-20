@@ -9,16 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createCross } from "@/server/actions/crosses"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 
-export function CrossNewClient({ species, plants }: any) {
+export function CrossNewClient({ species, plants, defaultSeedParentId, defaultPollenParentId }: any) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     speciesId: "",
-    seedParentId: "",
-    pollenParentId: "",
+    seedParentId: defaultSeedParentId ?? "",
+    pollenParentId: defaultPollenParentId ?? "",
     crossNumber: "",
     method: "MANUAL",
     plannedDate: "",
@@ -121,6 +121,7 @@ export function CrossNewClient({ species, plants }: any) {
               <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <Button type="submit" disabled={saving} className="w-full">
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {saving ? "Saving..." : "Create Cross"}
             </Button>
           </form>

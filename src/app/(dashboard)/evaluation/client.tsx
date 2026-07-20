@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Star, Search, Sprout } from "lucide-react"
+import { Star, Search, Sprout, Keyboard, Loader2 } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { createEvaluation } from "@/server/actions/seedlings"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function EvaluationClient({ seedlings: initialSeedlings, species }: any) {
   const router = useRouter()
@@ -20,26 +22,41 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
   const [search, setSearch] = useState("")
   const [evalOpen, setEvalOpen] = useState<string | null>(null)
   const [evalForm, setEvalForm] = useState({ systemName: "Standard", scores: "{}", totalScore: "", notes: "" })
+  const [saving, setSaving] = useState(false)
 
   async function handleEvaluate(seedlingId: string) {
-    await createEvaluation({
-      seedlingId,
-      systemName: evalForm.systemName,
-      criteria: {},
-      scores: JSON.parse(evalForm.scores || "{}"),
-      totalScore: evalForm.totalScore ? parseFloat(evalForm.totalScore) : undefined,
-      notes: evalForm.notes || undefined,
-    })
-    setEvalOpen(null)
-    setEvalForm({ systemName: "Standard", scores: "{}", totalScore: "", notes: "" })
-    router.refresh()
+    setSaving(true)
+    try {
+      const result = await createEvaluation({
+        seedlingId,
+        systemName: evalForm.systemName,
+        criteria: {},
+        scores: JSON.parse(evalForm.scores || "{}"),
+        totalScore: evalForm.totalScore ? parseFloat(evalForm.totalScore) : undefined,
+        notes: evalForm.notes || undefined,
+      })
+      if (!result.success) { toast.error(result.error); return }
+      toast.success("Evaluation saved")
+      setEvalOpen(null)
+      setEvalForm({ systemName: "Standard", scores: "{}", totalScore: "", notes: "" })
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Evaluation</h1>
-        <p className="text-sm text-muted-foreground">Score and evaluate seedlings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Evaluation</h1>
+          <p className="text-sm text-muted-foreground">Score and evaluate seedlings</p>
+        </div>
+        <Link href="/evaluation/quick">
+          <Button variant="default" size="sm">
+            <Keyboard className="mr-2 size-4" />Quick Evaluate
+          </Button>
+        </Link>
       </div>
 
       <div className="relative">
@@ -53,13 +70,14 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
       </div>
 
       {seedlings.length === 0 ? (
-        <Card><CardContent className="flex flex-col items-center gap-4 py-16">
-          <Star className="size-12 text-muted-foreground/40" />
-          <div className="text-center">
-            <p className="text-lg font-medium">No seedlings to evaluate</p>
-            <p className="text-sm text-muted-foreground">Add seedlings first, then evaluate them here.</p>
-          </div>
-        </CardContent></Card>
+        <EmptyState
+          icon={Star}
+          title="No seedlings to evaluate"
+          description="Create seedlings first through seed batches, then evaluate them here. Use Quick Evaluation for keyboard-driven scoring."
+          action={
+            <Link href="/seedlings/new"><Button variant="outline">Add Seedlings</Button></Link>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {seedlings
@@ -111,7 +129,10 @@ export function EvaluationClient({ seedlings: initialSeedlings, species }: any) 
                           <Label htmlFor="eval-notes">Notes</Label>
                           <Textarea id="eval-notes" value={evalForm.notes} onChange={(e) => setEvalForm({ ...evalForm, notes: e.target.value })} />
                         </div>
-                        <Button type="submit" className="w-full">Save Evaluation</Button>
+                        <Button type="submit" disabled={saving} className="w-full">
+                          {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                          {saving ? "Saving..." : "Save Evaluation"}
+                        </Button>
                       </form>
                     </DialogContent>
                   </Dialog>

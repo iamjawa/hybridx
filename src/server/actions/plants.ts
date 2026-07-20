@@ -3,6 +3,11 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/lib/types"
+import { auditLog } from "@/lib/audit"
+import { requireUserId } from "@/lib/require-user"
+import { trackEvent, EVENTS } from "@/lib/tracking"
+import { CreatePlantSchema } from "@/lib/validations"
+import { z } from "zod/v4"
 
 export async function getPlants(params?: {
   speciesId?: string
@@ -12,7 +17,8 @@ export async function getPlants(params?: {
   limit?: number
 }) {
   const { speciesId, status, search, page = 1, limit = 20 } = params || {}
-  const where: any = {}
+  const userId = await requireUserId()
+  const where: any = { deletedAt: null, breederId: userId }
   if (speciesId) where.speciesId = speciesId
   if (status) where.status = status
   if (search) {
@@ -50,8 +56,9 @@ export async function getPlantById(id: string) {
       seedlingsFrom: { take: 10, orderBy: { year: "desc" } },
       seedlingCrosses: { take: 10, orderBy: { year: "desc" } },
       location: true,
-      note: true,
+      note: { orderBy: { createdAt: "desc" } },
       tasks: { where: { completed: false } },
+      goalScores: { include: { goal: true }, orderBy: { overallScore: "desc" } },
     },
   })
 }
@@ -70,31 +77,28 @@ export async function createPlant(data: {
   status?: string
 }): Promise<ActionResult> {
   try {
-    await prisma.plant.create({
-      data: {
-        name: data.name,
-        varietyName: data.varietyName,
-        speciesId: data.speciesId,
-        description: data.description,
-        origin: data.origin,
-        year: data.year,
-        colour: data.colour,
-        fragrance: data.fragrance,
-        diseaseResistance: data.diseaseResistance,
-        repeatFlowering: data.repeatFlowering,
-        status: data.status as any ?? "ACTIVE",
-      },
+    const userId = await requireUserId()
+    const parsed = CreatePlantSchema.parse(data)
+    const plant = await prisma.plant.create({
+      data: { ...parsed, breederId: userId, status: (data.status ?? "ACTIVE") as any },
     })
+    auditLog({ action: "create", entity: "Plant", entityId: plant.id, metadata: { name: parsed.name } })
+    trackEvent(EVENTS.PLANT_CREATED, { name: parsed.name })
     revalidatePath("/plants")
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) return { success: false, error: error.issues.map(e => e.message).join(", ") }
     return { success: false, error: "Failed to create plant" }
   }
 }
 
 export async function updatePlant(id: string, data: Record<string, any>): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const existing = await prisma.plant.findFirst({ where: { id, breederId: userId } })
+    if (!existing) return { success: false, error: "Plant not found" }
     await prisma.plant.update({ where: { id }, data })
+    auditLog({ action: "update", entity: "Plant", entityId: id })
     revalidatePath("/plants")
     return { success: true }
   } catch (error) {
@@ -104,7 +108,11 @@ export async function updatePlant(id: string, data: Record<string, any>): Promis
 
 export async function deletePlant(id: string): Promise<ActionResult> {
   try {
-    await prisma.plant.delete({ where: { id } })
+    const userId = await requireUserId()
+    const existing = await prisma.plant.findFirst({ where: { id, breederId: userId } })
+    if (!existing) return { success: false, error: "Plant not found" }
+    await prisma.plant.update({ where: { id }, data: { deletedAt: new Date() } })
+    auditLog({ action: "delete", entity: "Plant", entityId: id })
     revalidatePath("/plants")
     return { success: true }
   } catch (error) {

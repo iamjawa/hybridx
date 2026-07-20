@@ -1,173 +1,397 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
-import { Leaf, GitMerge, Sprout, MapPin, Calendar, Award, Activity } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Leaf, GitMerge, Sprout, MapPin, Calendar, Award,
+  ImageIcon, Plus, Trash2, Star, Clock, FlaskConical, Heart,
+  Crosshair, Ruler, Activity, QrCode,
+} from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { addImage, setPrimaryImage, deleteImage } from "@/server/actions/images"
+import { createNote, deleteNote } from "@/server/actions/notes"
+import { PedigreeTree } from "@/components/plant/pedigree-tree"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { TraitBar, TraitText, TraitBoolean } from "@/components/profiles/trait-bar"
+import { GoalMatchCard } from "@/components/profiles/goal-match-card"
+import { EventTimeline } from "@/components/profiles/event-timeline"
+import { StatCard, StatGrid } from "@/components/profiles/stat-card"
 
-export function PlantDetailClient({ plant }: any) {
+export function PlantDetailClient({ plant: initialPlant }: any) {
+  const router = useRouter()
+  const [plant, setPlant] = useState(initialPlant)
+
+  function reload() { router.refresh() }
+
+  const allSeedlings = [...(plant.seedlingsFrom ?? []), ...(plant.seedlingCrosses ?? [])]
+
+  const primaryImage = plant.images?.find((i: any) => i.isPrimary) ?? plant.images?.[0]
+
+  const timeline: { date: Date; label: string; type: string }[] = []
+  if (plant.createdAt) timeline.push({ date: new Date(plant.createdAt), label: "Added to collection", type: "plant" })
+  if (plant.year) timeline.push({ date: new Date(`${plant.year}-01-01`), label: `Bred in ${plant.year}`, type: "breeding" })
+  plant.crossesAsSeedParent?.forEach((c: any) => {
+    if (c.createdAt) timeline.push({ date: new Date(c.createdAt), label: `Seed parent: ${plant.name} × ${c.pollenParent?.name ?? "?"} (${c.crossNumber ?? ""})`, type: "cross" })
+  })
+  plant.crossesAsPollenParent?.forEach((c: any) => {
+    if (c.createdAt) timeline.push({ date: new Date(c.createdAt), label: `Pollen parent: ${c.seedParent?.name ?? "?"} × ${plant.name} (${c.crossNumber ?? ""})`, type: "cross" })
+  })
+  plant.note?.forEach((n: any) => {
+    timeline.push({ date: new Date(n.createdAt), label: `Note: ${n.title ?? n.content.slice(0, 60)}`, type: "note" })
+  })
+  timeline.sort((a, b) => b.date.getTime() - a.date.getTime())
+
+  const totalCrosses = (plant.crossesAsSeedParent?.length ?? 0) + (plant.crossesAsPollenParent?.length ?? 0)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
-          <Leaf className="size-6 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{plant.name}</h1>
-            {plant.status && <Badge>{plant.status}</Badge>}
+    <div className="space-y-8">
+      <Breadcrumbs items={[{ label: "Plants", href: "/plants" }, { label: plant.name }]} />
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            {primaryImage ? (
+              <div className="aspect-[3/1] sm:aspect-[4/1] overflow-hidden bg-muted">
+                <img src={primaryImage.url} alt={plant.name} className="size-full object-cover" />
+              </div>
+            ) : (
+              <div className="aspect-[4/1] bg-gradient-to-br from-primary/5 to-muted flex items-center justify-center">
+                <Leaf className="size-12 text-muted-foreground/20" />
+              </div>
+            )}
+            <div className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-3xl font-bold tracking-tight">{plant.name}</h1>
+                    {plant.status && <Badge className="text-xs">{plant.status}</Badge>}
+                    {plant.isBreederLine && <Badge className="border-purple-500/30 bg-purple-500/10 text-purple-500 text-xs" variant="outline">Breeder Line</Badge>}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {plant.species?.name}{plant.varietyName ? ` · ${plant.varietyName}` : ""}{plant.year ? ` · ${plant.year}` : ""}
+                  </p>
+                  {plant.description && <p className="text-sm text-muted-foreground/80 mt-2 max-w-xl">{plant.description}</p>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Link href={`/crosses/new?seedParentId=${plant.id}`}>
+                    <Button variant="outline" size="sm"><GitMerge className="mr-1.5 size-3.5" />Cross</Button>
+                  </Link>
+                  <Link href={`/label?type=plant&id=${plant.id}`} target="_blank">
+                    <Button variant="outline" size="sm"><QrCode className="mr-1.5 size-3.5" />Label</Button>
+                  </Link>
+                  <ImageGalleryInline images={plant.images ?? []} plantId={plant.id} onUpdate={reload} />
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {plant.species?.name}{plant.year ? ` · ${plant.year}` : ""}{plant.origin ? ` · ${plant.origin}` : ""}
-          </p>
-        </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Calendar className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Year</p><p className="text-sm font-medium">{plant.year ?? "—"}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <MapPin className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Origin</p><p className="text-sm font-medium">{plant.origin ?? "—"}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Activity className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Status</p><p className="text-sm font-medium">{plant.status}</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-4">
-          <Award className="size-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">Awards</p><p className="text-sm font-medium">{(plant.awards as any[])?.length ?? 0}</p></div>
-        </CardContent></Card>
-      </div>
+          <StatGrid>
+            {plant.year && <StatCard icon={Calendar} label="Year" value={plant.year} />}
+            {plant.origin && <StatCard icon={MapPin} label="Origin" value={plant.origin} />}
+            {plant.inventoryCount != null && <StatCard icon={Leaf} label="Inventory" value={plant.inventoryCount} sub="plants" />}
+            {plant.location && <StatCard icon={MapPin} label="Location" value={plant.location.name} />}
+            <StatCard icon={GitMerge} label="Crosses" value={totalCrosses} />
+            <StatCard icon={Sprout} label="Offspring" value={allSeedlings.length} />
+            <StatCard icon={Award} label="Goal Scores" value={plant.goalScores?.length ?? 0} />
+            {plant.pollenFertility != null && <StatCard icon={FlaskConical} label="Pollen" value={`${plant.pollenFertility}%`} />}
+          </StatGrid>
 
-      <Tabs defaultValue="details">
-        <TabsList>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="crosses">Crosses</TabsTrigger>
-          <TabsTrigger value="seedlings">Seedlings</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details" className="mt-6 space-y-4">
-          {plant.description && (
+          {(plant.traitValues?.length > 0 || plant.colour || plant.fragrance || plant.diseaseResistance != null) && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-              <CardContent><p className="text-sm text-muted-foreground">{plant.description}</p></CardContent>
+              <CardHeader><CardTitle className="text-base">Traits</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {plant.colour && <TraitText label="Flower Colour" value={plant.colour} />}
+                  {plant.fragrance && <TraitText label="Fragrance" value={plant.fragrance} />}
+                  {plant.diseaseResistance && <TraitText label="Disease Resistance" value={plant.diseaseResistance} />}
+                  {plant.repeatFlowering != null && <TraitBoolean label="Repeat Flowering" value={plant.repeatFlowering} />}
+                  {plant.traitValues?.map((tv: any) => {
+                    const val = Number(tv.value)
+                    if (!isNaN(val) && tv.trait?.type?.startsWith("SCALE")) {
+                      const max = tv.trait.type === "SCALE_1_5" ? 5 : 10
+                      return <TraitBar key={tv.id} label={tv.trait.name} value={val} max={max} />
+                    }
+                    return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />
+                  })}
+                </div>
+              </CardContent>
             </Card>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {plant.colour && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Colour</p><p className="text-sm font-medium">{plant.colour}</p></CardContent></Card>}
-            {plant.fragrance && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Fragrance</p><p className="text-sm font-medium">{plant.fragrance}</p></CardContent></Card>}
-            {plant.diseaseResistance && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Disease Resistance</p><p className="text-sm font-medium">{plant.diseaseResistance}</p></CardContent></Card>}
-            {plant.pollenFertility != null && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Pollen Fertility</p><p className="text-sm font-medium">{plant.pollenFertility}%</p></CardContent></Card>}
-            {plant.seedFertility != null && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Seed Fertility</p><p className="text-sm font-medium">{plant.seedFertility}%</p></CardContent></Card>}
-            {plant.repeatFlowering != null && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Repeat Flowering</p><p className="text-sm font-medium">{plant.repeatFlowering ? "Yes" : "No"}</p></CardContent></Card>}
-            {plant.location && <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Location</p><p className="text-sm font-medium">{plant.location.name}</p></CardContent></Card>}
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><GitMerge className="size-4" />Breeding History</CardTitle></CardHeader>
+              <CardContent>
+                {totalCrosses === 0 ? (
+                  <div className="text-center py-8">
+                    <GitMerge className="mx-auto size-6 text-muted-foreground/40" />
+                    <p className="mt-2 text-sm text-muted-foreground">No crosses yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {plant.crossesAsSeedParent?.slice(0, 5).map((cross: any) => (
+                      <Link key={cross.id} href={`/crosses/${cross.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                        <div className="size-2 rounded-full bg-rose-500/60 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{plant.name} × {cross.pollenParent?.name ?? "?"}</p>
+                          <p className="text-xs text-muted-foreground">{cross.crossNumber ?? "No number"}{cross.seedCount != null ? ` · ${cross.seedCount} seeds` : ""}</p>
+                        </div>
+                      </Link>
+                    ))}
+                    {plant.crossesAsPollenParent?.slice(0, 5).map((cross: any) => (
+                      <Link key={cross.id} href={`/crosses/${cross.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                        <div className="size-2 rounded-full bg-blue-500/60 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{cross.seedParent?.name ?? "?"} × {plant.name}</p>
+                          <p className="text-xs text-muted-foreground">{cross.crossNumber ?? "No number"}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sprout className="size-4" />Offspring</CardTitle></CardHeader>
+              <CardContent>
+                {allSeedlings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Sprout className="mx-auto size-6 text-muted-foreground/40" />
+                    <p className="mt-2 text-sm text-muted-foreground">No seedlings yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {allSeedlings.slice(0, 8).map((s: any) => (
+                      <Link key={s.id} href={`/seedlings/${s.id}`} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                        <Sprout className="size-3.5 text-muted-foreground" />
+                        <span className="text-sm">{s.seedlingId}</span>
+                        {s.disposition && <Badge variant="outline" className="text-[10px] ml-auto">{s.disposition}</Badge>}
+                      </Link>
+                    ))}
+                    {allSeedlings.length > 8 && <p className="text-xs text-muted-foreground text-center pt-2">+{allSeedlings.length - 8} more</p>}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </TabsContent>
 
-        <TabsContent value="crosses" className="mt-6">
-          {plant.crossesAsSeedParent?.length === 0 && plant.crossesAsPollenParent?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No crosses recorded</CardContent></Card>
-          ) : (
-            <div className="space-y-4">
-              {plant.crossesAsSeedParent?.length > 0 && (
-                <div><h3 className="mb-3 text-sm font-medium">As Seed Parent</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {plant.crossesAsSeedParent.map((cross: any) => (
-                    <Link key={cross.id} href={`/crosses/${cross.id}`}>
-                      <Card className="transition-colors hover:border-border/80">
-                        <CardContent className="flex items-center gap-3 p-4">
-                          <GitMerge className="size-4 text-muted-foreground" />
-                          <div><p className="text-sm font-medium">{cross.pollenParent?.name ?? "?"} × {plant.name}</p>
-                          <p className="text-xs text-muted-foreground">{cross.crossNumber ?? "No number"}</p></div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div></div>
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="size-4" />Timeline</CardTitle></CardHeader>
+            <CardContent>
+              <EventTimeline events={timeline} emptyMessage="No timeline events" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                Pedigree
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(plant.crossesAsSeedParent?.length === 0 && plant.crossesAsPollenParent?.length === 0 && allSeedlings.length === 0) ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">No pedigree information available</div>
+              ) : (
+                <PedigreeTree plant={plant} />
               )}
-              {plant.crossesAsPollenParent?.length > 0 && (
-                <div><h3 className="mb-3 text-sm font-medium">As Pollen Parent</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {plant.crossesAsPollenParent.map((cross: any) => (
-                    <Link key={cross.id} href={`/crosses/${cross.id}`}>
-                      <Card className="transition-colors hover:border-border/80">
-                        <CardContent className="flex items-center gap-3 p-4">
-                          <GitMerge className="size-4 text-muted-foreground" />
-                          <div><p className="text-sm font-medium">{plant.name} × {cross.seedParent?.name ?? "?"}</p>
-                          <p className="text-xs text-muted-foreground">{cross.crossNumber ?? "No number"}</p></div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div></div>
-              )}
-            </div>
-          )}
-        </TabsContent>
+            </CardContent>
+          </Card>
 
-        <TabsContent value="seedlings" className="mt-6">
-          {plant.seedlingsFrom?.length === 0 && plant.seedlingCrosses?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No seedlings recorded</CardContent></Card>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[...(plant.seedlingsFrom ?? []), ...(plant.seedlingCrosses ?? [])].map((s: any) => (
-                <Link key={s.id} href={`/seedlings/${s.id}`}>
-                  <Card className="transition-colors hover:border-border/80">
-                    <CardContent className="flex items-center gap-3 p-4">
-                      <Sprout className="size-4 text-muted-foreground" />
-                      <div><p className="text-sm font-medium">{s.seedlingId}</p>
-                      <p className="text-xs text-muted-foreground">Year {s.year}</p></div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+          <NotesSection notes={plant.note ?? []} plantId={plant.id} onUpdate={reload} />
+        </div>
 
-        <TabsContent value="traits" className="mt-6">
-          {plant.traitValues?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No traits recorded</CardContent></Card>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {plant.traitValues.map((tv: any) => (
-                <Card key={tv.id}>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">{tv.trait?.name ?? "Unknown trait"}</p>
-                    <p className="text-sm font-medium mt-1">{String(tv.value)}</p>
-                    {tv.note && <p className="text-xs text-muted-foreground/60 mt-1">{tv.note}</p>}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Breeding Potential</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Pollen Fertility</p>
+                {plant.pollenFertility != null ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${plant.pollenFertility}%` }} />
+                    </div>
+                    <span className="text-sm font-medium">{plant.pollenFertility}%</span>
+                  </div>
+                ) : <span className="text-sm text-muted-foreground">Not recorded</span>}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Seed Fertility</p>
+                {plant.seedFertility != null ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${plant.seedFertility}%` }} />
+                    </div>
+                    <span className="text-sm font-medium">{plant.seedFertility}%</span>
+                  </div>
+                ) : <span className="text-sm text-muted-foreground">Not recorded</span>}
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {plant.isBreederLine && <Badge className="border-purple-500/30 bg-purple-500/10 text-purple-500" variant="outline">Breeder Line</Badge>}
+                {plant.isSeedParent && <Badge variant="outline">Seed Parent</Badge>}
+                {plant.isPollenParent && <Badge variant="outline">Pollen Parent</Badge>}
+              </div>
+            </CardContent>
+          </Card>
 
-        <TabsContent value="tasks" className="mt-6">
-          {plant.tasks?.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No tasks</CardContent></Card>
-          ) : (
+          {plant.goalScores?.length > 0 && (
             <div className="space-y-2">
-              {plant.tasks.map((task: any) => (
-                <Card key={task.id}>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className={`size-2 shrink-0 rounded-full ${task.completed ? "bg-green-500" : "bg-amber-500"}`} />
-                    <div><p className="text-sm font-medium">{task.title}</p>
-                    {task.dueDate && <p className="text-xs text-muted-foreground">Due {new Date(task.dueDate).toLocaleDateString()}</p>}</div>
-                  </CardContent>
-                </Card>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">Breeding Goals</p>
+              {plant.goalScores.map((gs: any) => (
+                <GoalMatchCard
+                  key={gs.id}
+                  goalName={gs.goal?.name ?? "Unknown goal"}
+                  goalId={gs.goalId}
+                  overallScore={gs.overallScore}
+                  breakdown={Array.isArray(gs.breakdown) ? gs.breakdown : undefined}
+                />
               ))}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+
+          <div className="flex flex-col gap-2">
+            <Link href={`/crosses/new?seedParentId=${plant.id}`}><Button variant="outline" size="sm" className="w-full"><GitMerge className="mr-2 size-4" />Cross as Seed (♀)</Button></Link>
+            <Link href={`/crosses/new?pollenParentId=${plant.id}`}><Button variant="outline" size="sm" className="w-full"><GitMerge className="mr-2 size-4" />Cross as Pollen (♂)</Button></Link>
+          </div>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function ImageGalleryInline({ images, plantId, onUpdate }: { images: any[]; plantId: string; onUpdate: () => void }) {
+  const [urlOpen, setUrlOpen] = useState(false)
+  const [url, setUrl] = useState("")
+
+  async function handleAddUrl() {
+    if (!url.trim()) return
+    const result = await addImage({ url: url.trim(), plantId, isPrimary: images.length === 0 })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Image added")
+    setUrl("")
+    setUrlOpen(false)
+    onUpdate()
+  }
+
+  async function handleSetPrimary(id: string) {
+    await setPrimaryImage(id, "plant", plantId)
+    toast.success("Primary image updated")
+    onUpdate()
+  }
+
+  async function handleDelete(imgId: string) {
+    await deleteImage(imgId, plantId)
+    toast.success("Image removed")
+    onUpdate()
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Dialog open={urlOpen} onOpenChange={setUrlOpen}>
+        <DialogTrigger render={<Button variant="ghost" size="sm"><ImageIcon className="size-3.5" /></Button>} />
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Image</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleAddUrl() }} className="space-y-4">
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/plant.jpg" />
+            <Button type="submit" className="w-full">Add Image</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {images.length > 0 && (
+        <div className="flex gap-1">
+          {images.slice(0, 4).map((img: any) => (
+            <div key={img.id} className="group relative size-8 rounded-md overflow-hidden bg-muted shrink-0">
+              <img src={img.url} alt="" className="size-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-0.5">
+                {!img.isPrimary && (
+                  <button onClick={() => handleSetPrimary(img.id)} className="p-0.5 rounded-full bg-white/20 hover:bg-white/40 text-white" title="Set as primary">
+                    <Star className="size-2.5" />
+                  </button>
+                )}
+                <ConfirmDialog title="Remove image?" description="This action cannot be undone." onConfirm={() => handleDelete(img.id)}>
+                  <button className="p-0.5 rounded-full bg-white/20 hover:bg-white/40 text-white" title="Remove">
+                    <Trash2 className="size-2.5" />
+                  </button>
+                </ConfirmDialog>
+              </div>
+              {img.isPrimary && <div className="absolute top-0.5 left-0.5 size-2 rounded-full bg-primary" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NotesSection({ notes, plantId, onUpdate }: { notes: any[]; plantId: string; onUpdate: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [content, setContent] = useState("")
+  const [title, setTitle] = useState("")
+
+  async function handleCreate() {
+    if (!content.trim()) return
+    const result = await createNote({ content, title: title || undefined, plantId })
+    if (!result.success) { toast.error(result.error); return }
+    toast.success("Note added")
+    setContent("")
+    setTitle("")
+    setOpen(false)
+    onUpdate()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Notes</CardTitle>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button variant="outline" size="sm"><Plus className="mr-1.5 size-3.5" />Add Note</Button>} />
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreate() }} className="space-y-4">
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} required placeholder="Write a note..." />
+                <Button type="submit" className="w-full">Save Note</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {notes.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
+        ) : (
+          <div className="space-y-2">
+            {notes.map((note: any) => (
+              <div key={note.id} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {note.title && <p className="text-sm font-medium">{note.title}</p>}
+                    <p className="text-sm text-muted-foreground mt-0.5">{note.content}</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">{new Date(note.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <ConfirmDialog title="Delete note?" description="This action cannot be undone." onConfirm={async () => { await deleteNote(note.id, plantId); onUpdate(); }}>
+                    <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="size-3" />
+                    </Button>
+                  </ConfirmDialog>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

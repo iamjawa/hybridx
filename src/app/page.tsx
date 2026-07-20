@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sprout, Leaf, GitMerge, Sparkles, ArrowRight } from "lucide-react"
+import { Sprout, Leaf, GitMerge, Sparkles, ArrowRight, Play } from "lucide-react"
 
 export default function Home() {
   return (
@@ -13,9 +13,9 @@ export default function Home() {
             <span className="font-semibold">HybridX</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+            <Link href="/demo" className="text-sm text-muted-foreground hover:text-foreground">Demo</Link>
             <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">Sign in</Link>
-            <Link href="/dashboard" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Get Started</Link>
+            <Link href="/signup" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Get Started</Link>
           </nav>
         </div>
       </header>
@@ -35,12 +35,12 @@ export default function Home() {
             from a single workspace — built for breeders who ship.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Link href="/dashboard" className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-8 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              Launch Dashboard
-              <ArrowRight className="ml-2 size-4" />
+            <Link href="/demo" className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-8 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              <Play className="mr-2 size-4" />
+              Explore Demo
             </Link>
-            <Link href="/species" className="inline-flex h-11 items-center justify-center rounded-lg border bg-background px-8 text-sm font-medium hover:bg-muted">
-              Browse Species
+            <Link href="/signup" className="inline-flex h-11 items-center justify-center rounded-lg border bg-background px-8 text-sm font-medium hover:bg-muted">
+              Start Your Programme
             </Link>
           </div>
         </section>

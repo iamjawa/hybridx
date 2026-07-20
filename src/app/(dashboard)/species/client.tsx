@@ -8,25 +8,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Flower2, Plus } from "lucide-react"
+import { Flower2, Plus, Loader2 } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { createSpecies } from "@/server/actions/species"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function SpeciesClient({ species }: any) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ name: "", slug: "", description: "" })
+  const [saving, setSaving] = useState(false)
 
   async function handleCreate() {
-    await createSpecies({
-      name: form.name,
-      slug: form.slug.toLowerCase().replace(/\s+/g, "-"),
-      description: form.description || undefined,
-    })
-    setOpen(false)
-    setForm({ name: "", slug: "", description: "" })
-    router.refresh()
+    setSaving(true)
+    try {
+      const result = await createSpecies({
+        name: form.name,
+        slug: form.slug.toLowerCase().replace(/\s+/g, "-"),
+        description: form.description || undefined,
+      })
+      if (!result.success) { toast.error(result.error); return }
+      toast.success("Species created")
+      setOpen(false)
+      setForm({ name: "", slug: "", description: "" })
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -56,20 +66,26 @@ export function SpeciesClient({ species }: any) {
                 <Label htmlFor="desc">Description</Label>
                 <Textarea id="desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
-              <Button type="submit" className="w-full">Create Species</Button>
+              <Button type="submit" disabled={saving} className="w-full">
+                {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {saving ? "Saving..." : "Create Species"}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
       {species.length === 0 ? (
-        <Card><CardContent className="flex flex-col items-center gap-4 py-16">
-          <Flower2 className="size-12 text-muted-foreground/40" />
-          <div className="text-center">
-            <p className="text-lg font-medium">No species configured</p>
-            <p className="text-sm text-muted-foreground">Add your first species to define traits and breeding parameters.</p>
-          </div>
-        </CardContent></Card>
+        <EmptyState
+          icon={Flower2}
+          title="No species configured"
+          description="Configure your breeding species to define traits, generation labels, and flower forms. Species are the foundation of your breeding programme."
+          action={
+            <Dialog>
+              <DialogTrigger render={<Button />}><Plus className="mr-2 size-4" />Add Species</DialogTrigger>
+            </Dialog>
+          }
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {species.map((s: any) => (

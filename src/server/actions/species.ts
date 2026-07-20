@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/lib/types"
+import { auditLog } from "@/lib/audit"
+import { requireUserId } from "@/lib/require-user"
 
 export async function getSpecies() {
   return prisma.species.findMany({
@@ -33,15 +35,18 @@ export async function createSpecies(data: {
   flowerFormOptions?: string[]
 }): Promise<ActionResult> {
   try {
-    await prisma.species.create({
+    const userId = await requireUserId()
+    const species = await prisma.species.create({
       data: {
         name: data.name,
         slug: data.slug,
         description: data.description,
         generationLabels: data.generationLabels ?? ["F1", "F2", "F3", "F4", "F5", "BC1", "BC2"],
         flowerFormOptions: data.flowerFormOptions ?? [],
+        createdById: userId,
       },
     })
+    auditLog({ action: "create", entity: "Species", entityId: species.id })
     revalidatePath("/species")
     return { success: true }
   } catch (error) {
@@ -64,6 +69,7 @@ export async function updateSpecies(
 ): Promise<ActionResult> {
   try {
     await prisma.species.update({ where: { id }, data })
+    auditLog({ action: "update", entity: "Species", entityId: id })
     revalidatePath("/species")
     return { success: true }
   } catch (error) {
@@ -74,6 +80,7 @@ export async function updateSpecies(
 export async function deleteSpecies(id: string): Promise<ActionResult> {
   try {
     await prisma.species.delete({ where: { id } })
+    auditLog({ action: "delete", entity: "Species", entityId: id })
     revalidatePath("/species")
     return { success: true }
   } catch (error) {

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createSeedling } from "@/server/actions/seedlings"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 
 export function SeedlingNewClient({ species, crosses }: any) {
@@ -110,6 +110,7 @@ export function SeedlingNewClient({ species, crosses }: any) {
               <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <Button type="submit" disabled={saving} className="w-full">
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {saving ? "Saving..." : "Create Seedling"}
             </Button>
           </form>
