@@ -32,3 +32,14 @@ export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   return user
 }
+
+export async function signInWithGoogle(): Promise<ActionResult<{ url: string }>> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://hybridx-production.up.railway.app"
+  if (!supabaseUrl) return { success: false, error: "Supabase not configured" }
+
+  const redirectTo = `${siteUrl}/auth/callback`
+  const url = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`
+
+  return { success: true, data: { url } }
+}

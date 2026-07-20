@@ -29,7 +29,7 @@ export async function getSession() {
 }
 
 export async function getCurrentUser() {
-  const session = await getSession()
-  if (!session?.user) return null
-  return session.user
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
 }
