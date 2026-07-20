@@ -119,26 +119,36 @@ export function GoalsClient({ goals: initialGoals, species }: any) {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <Input placeholder="Trait name (e.g. Colour)" value={c.traitName} onChange={(e) => updateCriterion(i, "traitName", e.target.value)} />
-                      <Input placeholder="Target value" value={c.targetValue} onChange={(e) => updateCriterion(i, "targetValue", e.target.value)} />
+                      {c.type === "BOOLEAN" ? (
+                        <Select value={c.targetValue} onValueChange={(v) => updateCriterion(i, "targetValue", v ?? "true")}>
+                          <SelectTrigger><SelectValue placeholder="Yes/No">{c.targetValue === "true" ? "Yes" : c.targetValue === "false" ? "No" : undefined}</SelectValue></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input placeholder="Target value" value={c.targetValue} onChange={(e) => updateCriterion(i, "targetValue", e.target.value)} />
+                      )}
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      <Select value={c.type} onValueChange={(v) => updateCriterion(i, "type", v ?? "TEXT")}>
-                        <SelectTrigger><SelectValue>{["TEXT", "SCALE_1_5", "SCALE_1_10", "BOOLEAN", "NUMERIC"].find(v => v === c.type)}</SelectValue></SelectTrigger>
+                      <Select value={c.type} onValueChange={(v) => { updateCriterion(i, "type", v ?? "TEXT"); if (v === "BOOLEAN") updateCriterion(i, "operator", "equals") }}>
+                        <SelectTrigger><SelectValue>{["TEXT", "SCALE_1_5", "SCALE_1_10", "BOOLEAN", "PERCENTAGE"].find(v => v === c.type)}</SelectValue></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="TEXT">Text</SelectItem>
                           <SelectItem value="SCALE_1_5">Scale 1-5</SelectItem>
                           <SelectItem value="SCALE_1_10">Scale 1-10</SelectItem>
                           <SelectItem value="BOOLEAN">Yes/No</SelectItem>
-                          <SelectItem value="NUMERIC">Numeric</SelectItem>
+                          <SelectItem value="PERCENTAGE">Percentage</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={c.operator} onValueChange={(v) => updateCriterion(i, "operator", v ?? "equals")}>
                         <SelectTrigger><SelectValue>{["equals", "contains", "gte", "lte"].find(v => v === c.operator)}</SelectValue></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="equals">Equals</SelectItem>
-                          <SelectItem value="contains">Contains</SelectItem>
-                          <SelectItem value="gte">≥</SelectItem>
-                          <SelectItem value="lte">≤</SelectItem>
+                          {c.type !== "BOOLEAN" && <SelectItem value="contains">Contains</SelectItem>}
+                          {c.type !== "BOOLEAN" && <SelectItem value="gte">≥</SelectItem>}
+                          {c.type !== "BOOLEAN" && <SelectItem value="lte">≤</SelectItem>}
                         </SelectContent>
                       </Select>
                       <div className="relative">

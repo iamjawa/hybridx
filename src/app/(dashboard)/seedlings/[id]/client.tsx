@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TraitBar, TraitText } from "@/components/profiles/trait-bar"
+import { TraitBar, TraitText, TraitBoolean } from "@/components/profiles/trait-bar"
 import { GoalMatchCard } from "@/components/profiles/goal-match-card"
 import { EventTimeline } from "@/components/profiles/event-timeline"
 
@@ -218,7 +218,17 @@ export function SeedlingDetailClient({ seedling }: any) {
                   {seedling.fragrance && <TraitText label="Fragrance" value={seedling.fragrance} />}
                   {seedling.traitValues?.map((tv: any) => {
                     const val = Number(tv.value)
-                    if (!isNaN(val)) return <TraitBar key={tv.id} label={tv.trait?.name ?? "Trait"} value={val} />
+                    const type = tv.trait?.type
+                    if (type === "BOOLEAN" || type === "YES_NO") {
+                      return <TraitBoolean key={tv.id} label={tv.trait.name} value={tv.value === true || tv.value === "true" || tv.value === "Yes"} />
+                    }
+                    if (type === "PERCENTAGE") {
+                      return <TraitText key={tv.id} label={tv.trait.name} value={`${val}%`} />
+                    }
+                    if (!isNaN(val) && type?.startsWith("SCALE")) {
+                      const max = type === "SCALE_1_5" ? 5 : 10
+                      return <TraitBar key={tv.id} label={tv.trait.name} value={val} max={max} />
+                    }
                     return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />
                   })}
                 </CardContent>

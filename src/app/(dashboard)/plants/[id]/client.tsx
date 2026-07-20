@@ -164,8 +164,15 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
                   {plant.repeatFlowering != null && <TraitBoolean label="Repeat Flowering" value={plant.repeatFlowering} />}
                   {plant.traitValues?.map((tv: any) => {
                     const val = Number(tv.value)
-                    if (!isNaN(val) && tv.trait?.type?.startsWith("SCALE")) {
-                      const max = tv.trait.type === "SCALE_1_5" ? 5 : 10
+                    const type = tv.trait?.type
+                    if (type === "BOOLEAN" || type === "YES_NO") {
+                      return <TraitBoolean key={tv.id} label={tv.trait.name} value={tv.value === true || tv.value === "true" || tv.value === "Yes"} />
+                    }
+                    if (type === "PERCENTAGE") {
+                      return <TraitText key={tv.id} label={tv.trait.name} value={`${val}%`} />
+                    }
+                    if (!isNaN(val) && type?.startsWith("SCALE")) {
+                      const max = type === "SCALE_1_5" ? 5 : 10
                       return <TraitBar key={tv.id} label={tv.trait.name} value={val} max={max} />
                     }
                     return <TraitText key={tv.id} label={tv.trait?.name ?? "Trait"} value={String(tv.value)} />

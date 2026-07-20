@@ -177,16 +177,18 @@ export function SpeciesDetailClient({ species }: any) {
                   </div>
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select value={traitForm.type} onValueChange={(v) => setTraitForm({ ...traitForm, type: v ?? "SCALE_1_10" })}>
-                      <SelectTrigger><SelectValue>{["SCALE_1_5", "SCALE_1_10", "BOOLEAN", "TEXT", "PERCENTAGE"].find(v => v === traitForm.type)}</SelectValue></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SCALE_1_5">Scale 1-5</SelectItem>
-                        <SelectItem value="SCALE_1_10">Scale 1-10</SelectItem>
-                        <SelectItem value="BOOLEAN">Yes/No</SelectItem>
-                        <SelectItem value="TEXT">Text</SelectItem>
-                        <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Select value={traitForm.type} onValueChange={(v) => setTraitForm({ ...traitForm, type: v ?? "SCALE_1_10" })}>
+                        <SelectTrigger><SelectValue>{["SCALE_1_5", "SCALE_1_10", "BOOLEAN", "TEXT", "PERCENTAGE", "NUMERIC", "YES_NO"].find(v => v === traitForm.type)}</SelectValue></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SCALE_1_5">Scale 1-5</SelectItem>
+                          <SelectItem value="SCALE_1_10">Scale 1-10</SelectItem>
+                          <SelectItem value="BOOLEAN">Yes/No</SelectItem>
+                          <SelectItem value="TEXT">Text</SelectItem>
+                          <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                          <SelectItem value="NUMERIC">Numeric</SelectItem>
+                          <SelectItem value="YES_NO">Yes/No (alt)</SelectItem>
+                        </SelectContent>
+                      </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="trait-category">Category</Label>
