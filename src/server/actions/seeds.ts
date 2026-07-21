@@ -137,21 +137,22 @@ export async function recordGermination(id: string, data: {
 }): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
-    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
-    if (!seed) return { success: false, error: "Seed batch not found" }
-    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
-    const update: any = {
-      germinatedCount: data.germinatedCount,
-      failedCount: data.failedCount,
-      germinationDate: data.germinationDate ?? new Date(),
-      stage: (data.stage ?? "GERMINATED") as any,
-    }
-    if (data.germinatedCount != null && data.failedCount != null) {
-      update.successRate = seed.totalCount > 0
-        ? Math.round((data.germinatedCount / (data.germinatedCount + data.failedCount)) * 100)
-        : 0
-    }
-    await prisma.seed.update({ where: { id }, data: update })
+    await prisma.$transaction(async (tx) => {
+      const seed = await tx.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+      if (!seed || (seed.cross && seed.cross.createdById !== userId)) throw new Error("Seed not found")
+      const update: any = {
+        germinatedCount: data.germinatedCount,
+        failedCount: data.failedCount,
+        germinationDate: data.germinationDate ?? new Date(),
+        stage: (data.stage ?? "GERMINATED") as any,
+      }
+      if (data.germinatedCount != null && data.failedCount != null) {
+        update.successRate = seed.totalCount > 0
+          ? Math.round((data.germinatedCount / (data.germinatedCount + data.failedCount)) * 100)
+          : 0
+      }
+      await tx.seed.update({ where: { id }, data: update })
+    })
     revalidatePath("/seeds")
     return { success: true }
   } catch (error) {
@@ -226,7 +227,7 @@ export async function createSeedlingsFromSeed(seedId: string, count: number): Pr
 
     await prisma.seed.update({
       where: { id: seedId },
-      data: { germinatedCount: (seed.germinatedCount ?? 0) + count, stage: "GERMINATED" },
+      data: { germinatedCount: { increment: count }, stage: "GERMINATED" },
     })
 
     revalidatePath("/seeds")

@@ -6,7 +6,7 @@ import type { ActionResult } from "@/lib/types"
 import { auditLog } from "@/lib/audit"
 import { requireUserId } from "@/lib/require-user"
 import { trackEvent, EVENTS } from "@/lib/tracking"
-import { CreateCrossSchema } from "@/lib/validations"
+import { CreateCrossSchema, UpdateCrossSchema } from "@/lib/validations"
 import { z } from "zod/v4"
 
 export async function getCrosses(params?: {
@@ -89,16 +89,18 @@ export async function createCross(data: {
   }
 }
 
-export async function updateCross(id: string, data: Record<string, any>): Promise<ActionResult> {
+export async function updateCross(id: string, data: z.infer<typeof UpdateCrossSchema>): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
     const existing = await prisma.cross.findFirst({ where: { id, createdById: userId } })
     if (!existing) return { success: false, error: "Cross not found" }
-    await prisma.cross.update({ where: { id }, data })
+    const parsed = UpdateCrossSchema.parse(data)
+    await prisma.cross.update({ where: { id }, data: parsed as any })
     auditLog({ action: "update", entity: "Cross", entityId: id })
     revalidatePath("/crosses")
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) return { success: false, error: error.issues.map(e => e.message).join(", ") }
     return { success: false, error: "Failed to update cross" }
   }
 }

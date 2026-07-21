@@ -6,7 +6,7 @@ import type { ActionResult } from "@/lib/types"
 import { auditLog } from "@/lib/audit"
 import { requireUserId } from "@/lib/require-user"
 import { trackEvent, EVENTS } from "@/lib/tracking"
-import { CreatePlantSchema } from "@/lib/validations"
+import { CreatePlantSchema, UpdatePlantSchema } from "@/lib/validations"
 import { z } from "zod/v4"
 
 export async function getPlants(params?: {
@@ -93,16 +93,18 @@ export async function createPlant(data: {
   }
 }
 
-export async function updatePlant(id: string, data: Record<string, any>): Promise<ActionResult> {
+export async function updatePlant(id: string, data: z.infer<typeof UpdatePlantSchema>): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
     const existing = await prisma.plant.findFirst({ where: { id, breederId: userId } })
     if (!existing) return { success: false, error: "Plant not found" }
-    await prisma.plant.update({ where: { id }, data })
+    const parsed = UpdatePlantSchema.parse(data)
+    await prisma.plant.update({ where: { id }, data: parsed as any })
     auditLog({ action: "update", entity: "Plant", entityId: id })
     revalidatePath("/plants")
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) return { success: false, error: error.issues.map(e => e.message).join(", ") }
     return { success: false, error: "Failed to update plant" }
   }
 }
