@@ -74,6 +74,7 @@ export async function updateSpecies(
   }
 ): Promise<ActionResult> {
   try {
+    await requireUserId()
     await prisma.species.update({ where: { id }, data })
     auditLog({ action: "update", entity: "Species", entityId: id })
     revalidatePath("/species")
@@ -85,7 +86,8 @@ export async function updateSpecies(
 
 export async function deleteSpecies(id: string): Promise<ActionResult> {
   try {
-    await prisma.species.delete({ where: { id } })
+    await requireUserId()
+    await prisma.species.update({ where: { id }, data: { isActive: false } })
     auditLog({ action: "delete", entity: "Species", entityId: id })
     revalidatePath("/species")
     return { success: true }
@@ -105,6 +107,7 @@ export async function createTrait(data: {
   options?: string[]
 }): Promise<ActionResult> {
   try {
+    await requireUserId()
     await prisma.traitDefinition.create({ data: { ...data, type: data.type as any } })
     revalidatePath("/species")
     return { success: true }
@@ -115,6 +118,7 @@ export async function createTrait(data: {
 
 export async function deleteTrait(id: string): Promise<ActionResult> {
   try {
+    await requireUserId()
     await prisma.traitDefinition.delete({ where: { id } })
     revalidatePath("/species")
     return { success: true }

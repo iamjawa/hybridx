@@ -89,7 +89,7 @@ export function PlantDetailClient({ plant: initialPlant }: any) {
     if (c.createdAt) timeline.push({ date: new Date(c.createdAt), label: `Pollen parent: ${c.seedParent?.name ?? "?"} × ${plant.name} (${c.crossNumber ?? ""})`, type: "cross" })
   })
   plant.note?.forEach((n: any) => {
-    timeline.push({ date: new Date(n.createdAt), label: `Note: ${n.title ?? n.content.slice(0, 60)}`, type: "note" })
+    timeline.push({ date: new Date(n.createdAt), label: `Note: ${n.title ?? (n.content ?? "").slice(0, 60)}`, type: "note" })
   })
   timeline.sort((a, b) => b.date.getTime() - a.date.getTime())
 

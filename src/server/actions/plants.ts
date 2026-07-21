@@ -45,8 +45,9 @@ export async function getPlants(params?: {
 }
 
 export async function getPlantById(id: string) {
-  return prisma.plant.findUnique({
-    where: { id },
+  const userId = await requireUserId()
+  return prisma.plant.findFirst({
+    where: { id, breederId: userId },
     include: {
       species: true,
       images: true,

@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/prisma"
 import { QuickEvalClient } from "./client"
+import { requireUserId } from "@/lib/require-user"
 
 export const dynamic = "force-dynamic"
 
 export default async function QuickEvalPage(props: { searchParams: Promise<{ speciesId?: string }> }) {
+  const userId = await requireUserId()
   const { speciesId } = await props.searchParams
 
   const seedlings = await prisma.seedling.findMany({
     where: {
+      createdById: userId,
       disposition: { not: "CULLED" },
       ...(speciesId ? { speciesId } : {}),
     },

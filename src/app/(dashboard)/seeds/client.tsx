@@ -45,8 +45,9 @@ export function SeedsClient({ initialSeeds, total, pages, species, initialStage 
   }
 
   async function handleStageFilter(value: string | null) {
-    setStageFilter(value ?? "")
-    const result = await getSeeds({ stage: value || undefined, search: search || undefined })
+    const v = value === "all" ? undefined : value
+    setStageFilter(v ?? "")
+    const result = await getSeeds({ stage: v || undefined, search: search || undefined })
     setSeeds(result.seeds)
     updateUrl({ stage: value ?? "" })
   }

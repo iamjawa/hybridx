@@ -47,8 +47,9 @@ export async function getSeeds(params?: {
 }
 
 export async function getSeedById(id: string) {
-  return prisma.seed.findUnique({
-    where: { id },
+  const userId = await requireUserId()
+  return prisma.seed.findFirst({
+    where: { id, cross: { createdById: userId } },
     include: {
       cross: { include: { seedParent: true, pollenParent: true, species: true } },
       species: true,
@@ -86,6 +87,10 @@ export async function createSeed(data: {
 
 export async function updateSeed(id: string, data: Record<string, any>): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+    if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
     await prisma.seed.update({ where: { id }, data })
     auditLog({ action: "update", entity: "Seed", entityId: id })
     revalidatePath("/seeds")
@@ -103,6 +108,10 @@ export async function startStratification(id: string, data: {
   notes?: string
 }): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+    if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
     await prisma.seed.update({
       where: { id },
       data: {
@@ -127,6 +136,10 @@ export async function recordGermination(id: string, data: {
   stage?: string
 }): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+    if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
     const update: any = {
       germinatedCount: data.germinatedCount,
       failedCount: data.failedCount,
@@ -134,12 +147,9 @@ export async function recordGermination(id: string, data: {
       stage: (data.stage ?? "GERMINATED") as any,
     }
     if (data.germinatedCount != null && data.failedCount != null) {
-      const seed = await prisma.seed.findUnique({ where: { id } })
-      if (seed) {
-        update.successRate = seed.totalCount > 0
-          ? Math.round((data.germinatedCount / (data.germinatedCount + data.failedCount)) * 100)
-          : 0
-      }
+      update.successRate = seed.totalCount > 0
+        ? Math.round((data.germinatedCount / (data.germinatedCount + data.failedCount)) * 100)
+        : 0
     }
     await prisma.seed.update({ where: { id }, data: update })
     revalidatePath("/seeds")
@@ -151,6 +161,10 @@ export async function recordGermination(id: string, data: {
 
 export async function advanceSeedStage(id: string, stage: string): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+    if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
     await prisma.seed.update({ where: { id }, data: { stage: stage as any } })
     revalidatePath("/seeds")
     return { success: true }
@@ -161,6 +175,10 @@ export async function advanceSeedStage(id: string, stage: string): Promise<Actio
 
 export async function deleteSeed(id: string): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const seed = await prisma.seed.findUnique({ where: { id }, include: { cross: { select: { createdById: true } } } })
+    if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
     await prisma.seed.update({ where: { id }, data: { deletedAt: new Date() } })
     auditLog({ action: "delete", entity: "Seed", entityId: id })
     revalidatePath("/seeds")
@@ -172,11 +190,13 @@ export async function deleteSeed(id: string): Promise<ActionResult> {
 
 export async function createSeedlingsFromSeed(seedId: string, count: number): Promise<ActionResult<{ seedlingIds: string[] }>> {
   try {
+    const userId = await requireUserId()
     const seed = await prisma.seed.findUnique({
       where: { id: seedId },
       include: { cross: { include: { seedParent: true, pollenParent: true } } },
     })
     if (!seed) return { success: false, error: "Seed batch not found" }
+    if (seed.cross && seed.cross.createdById !== userId) return { success: false, error: "Seed batch not found" }
 
     const existing = await prisma.seedling.count({ where: { seedId } })
     const seedlingIds: string[] = []

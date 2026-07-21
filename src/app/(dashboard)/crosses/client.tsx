@@ -34,8 +34,9 @@ export function CrossesClient({ initialCrosses, total, pages, species, plants }:
   }
 
   async function handleSpeciesFilter(value: string | null) {
-    setSpeciesFilter(value ?? "")
-    const result = await getCrosses({ speciesId: value || undefined, search: search || undefined })
+    const v = value === "all" ? undefined : value
+    setSpeciesFilter(v ?? "")
+    const result = await getCrosses({ speciesId: v || undefined, search: search || undefined })
     setCrosses(result.crosses)
   }
 

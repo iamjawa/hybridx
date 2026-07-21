@@ -35,8 +35,9 @@ export function PlantsClient({ initialPlants, total, pages, species }: any) {
   }
 
   async function handleSpeciesFilter(value: string | null) {
-    setSpeciesFilter(value ?? "")
-    const result = await getPlants({ speciesId: value || undefined, search: search || undefined })
+    const v = value === "all" ? undefined : value
+    setSpeciesFilter(v ?? "")
+    const result = await getPlants({ speciesId: v || undefined, search: search || undefined })
     setPlants(result.plants)
   }
 

@@ -50,8 +50,9 @@ export async function getCrosses(params?: {
 }
 
 export async function getCrossById(id: string) {
-  return prisma.cross.findUnique({
-    where: { id },
+  const userId = await requireUserId()
+  return prisma.cross.findFirst({
+    where: { id, createdById: userId },
     include: {
       seedParent: { include: { species: true } },
       pollenParent: { include: { species: true } },
@@ -127,6 +128,9 @@ export async function recordPollination(data: {
   notes?: string
 }): Promise<ActionResult> {
   try {
+    const userId = await requireUserId()
+    const cross = await prisma.cross.findFirst({ where: { id: data.crossId, createdById: userId } })
+    if (!cross) return { success: false, error: "Cross not found" }
     await prisma.pollination.create({
       data: {
         crossId: data.crossId,

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/lib/types"
 import { trackEvent, EVENTS } from "@/lib/tracking"
+import { requireUserId } from "@/lib/require-user"
 
 type ImportRow = Record<string, string>
 
@@ -152,6 +153,7 @@ export async function importPlants(rows: ImportRow[], columnMap: ColumnMap): Pro
   details: string[]
 }>> {
   try {
+    const userId = await requireUserId()
     let created = 0
     let skipped = 0
     let errors = 0
@@ -177,7 +179,7 @@ export async function importPlants(rows: ImportRow[], columnMap: ColumnMap): Pro
             speciesId = speciesByName.get(sn)
           } else {
             const newSpecies = await prisma.species.create({
-              data: { name: row[columnMap.species].trim(), slug: sn.replace(/\s+/g, "-") },
+              data: { name: row[columnMap.species].trim(), slug: sn.replace(/\s+/g, "-"), createdById: userId },
             })
             speciesByName.set(sn, newSpecies.id)
             speciesId = newSpecies.id
@@ -200,6 +202,7 @@ export async function importPlants(rows: ImportRow[], columnMap: ColumnMap): Pro
         await prisma.plant.create({
           data: {
             name,
+            breederId: userId,
             speciesId,
             varietyName: columnMap.varietyName ? row[columnMap.varietyName]?.trim() || undefined : undefined,
             year,

@@ -1,26 +1,31 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { requireUserId } from "@/lib/require-user"
 
 export async function getAnalytics() {
+  const userId = await requireUserId()
   const thisYear = new Date().getFullYear()
 
   const [crossesByMonth, dispositionCounts, evaluationDistribution, topParents] = await Promise.all([
     prisma.cross.groupBy({
       by: ["createdAt"],
-      where: { createdAt: { gte: new Date(`${thisYear}-01-01`) } },
+      where: { createdById: userId, createdAt: { gte: new Date(`${thisYear}-01-01`) } },
       _count: { id: true },
     }),
     prisma.seedling.groupBy({
       by: ["disposition"],
+      where: { createdById: userId },
       _count: { id: true },
     }),
     prisma.evaluation.findMany({
+      where: { evaluatorId: userId },
       select: { totalScore: true },
       orderBy: { totalScore: "asc" },
     }),
     prisma.plant.findMany({
       where: {
+        breederId: userId,
         OR: [
           { crossesAsSeedParent: { some: {} } },
           { crossesAsPollenParent: { some: {} } },

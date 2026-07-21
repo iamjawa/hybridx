@@ -45,8 +45,9 @@ export async function getSeedlings(params?: {
 }
 
 export async function getSeedlingById(id: string) {
-  return prisma.seedling.findUnique({
-    where: { id },
+  const userId = await requireUserId()
+  return prisma.seedling.findFirst({
+    where: { id, createdById: userId },
     include: {
       cross: { include: { seedParent: true, pollenParent: true } },
       species: true,

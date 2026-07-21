@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { HealthClient } from "./client"
+import { requireUserId } from "@/lib/require-user"
+import { notFound } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
@@ -25,6 +27,10 @@ async function checkAuth() {
 }
 
 export default async function HealthPage() {
+  const userId = await requireUserId()
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (user?.role !== "ADMIN") notFound()
+
   const [db, auth, plantCount, crossCount, seedlingCount, seedCount, evaluationCount, goalCount, feedbackCount, eventCount] = await Promise.all([
     checkDatabase(),
     checkAuth(),

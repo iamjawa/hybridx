@@ -31,8 +31,9 @@ export async function getGoals(params?: { speciesId?: string; isActive?: boolean
 }
 
 export async function getGoalById(id: string) {
-  return prisma.breedingGoal.findUnique({
-    where: { id },
+  const userId = await requireUserId()
+  return prisma.breedingGoal.findFirst({
+    where: { id, createdById: userId },
     include: {
       species: true,
       scores: {
@@ -169,7 +170,8 @@ function extractValue(entity: any, traitName: string, _type: string): any {
 
 export async function runGoalMatching(goalId: string, entityType: "plant" | "seedling"): Promise<ActionResult<{ scored: number }>> {
   try {
-    const goal = await prisma.breedingGoal.findUnique({ where: { id: goalId } })
+    const userId = await requireUserId()
+    const goal = await prisma.breedingGoal.findFirst({ where: { id: goalId, createdById: userId } })
     if (!goal) return { success: false, error: "Goal not found" }
     const criteria = goal.criteria as unknown as GoalCriterion[]
     if (!criteria.length) return { success: false, error: "Goal has no criteria" }
@@ -179,11 +181,11 @@ export async function runGoalMatching(goalId: string, entityType: "plant" | "see
 
     const entities = entityType === "plant"
       ? await prisma.plant.findMany({
-          where: { speciesId: goal.speciesId ?? undefined },
+          where: { speciesId: goal.speciesId ?? undefined, breederId: userId },
           include: { traitValues: { include: { trait: true } } },
         })
       : await prisma.seedling.findMany({
-          where: { speciesId: goal.speciesId ?? undefined },
+          where: { speciesId: goal.speciesId ?? undefined, createdById: userId },
           include: { traitValues: { include: { trait: true } } },
         })
 
@@ -208,13 +210,15 @@ export async function runGoalMatching(goalId: string, entityType: "plant" | "see
       }
     }).filter((s) => s.overallScore > 0)
 
-    await prisma.breedingGoalScore.deleteMany({
-      where: { goalId, plantId: entityType === "plant" ? { not: null } : undefined, seedlingId: entityType === "seedling" ? { not: null } : undefined },
-    })
+    await prisma.$transaction(async (tx) => {
+      await tx.breedingGoalScore.deleteMany({
+        where: { goalId, plantId: entityType === "plant" ? { not: null } : undefined, seedlingId: entityType === "seedling" ? { not: null } : undefined },
+      })
 
-    if (scores.length > 0) {
-      await prisma.breedingGoalScore.createMany({ data: scores as any })
-    }
+      if (scores.length > 0) {
+        await tx.breedingGoalScore.createMany({ data: scores as any })
+      }
+    })
 
     revalidatePath("/goals")
     return { success: true, data: { scored: scores.length } }
@@ -224,6 +228,7 @@ export async function runGoalMatching(goalId: string, entityType: "plant" | "see
 }
 
 export async function getGoalMatchForEntity(entityType: "plant" | "seedling", entityId: string) {
+  await requireUserId()
   const where = entityType === "plant" ? { plantId: entityId } : { seedlingId: entityId }
   return prisma.breedingGoalScore.findMany({
     where,

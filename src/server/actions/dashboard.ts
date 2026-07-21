@@ -8,7 +8,6 @@ export async function getDashboardStats() {
   const userId = await requireUserId()
   const now = new Date()
   const thisYear = now.getFullYear()
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
   const stratifyingStages: SeedStage[] = ["STRATIFYING", "COLD_STRATIFYING", "WARM_STRATIFYING"]
 
   const [
@@ -37,7 +36,6 @@ export async function getDashboardStats() {
     prisma.seed.count(),
     prisma.species.count(),
     prisma.evaluation.count({ where: { evaluatorId: userId } }),
-    prisma.breedingGoal.count({ where: { createdById: userId } }),
 
     prisma.cross.count({ where: { createdById: userId, createdAt: { gte: new Date(`${thisYear}-01-01`) } } }),
     prisma.seedling.count({ where: { createdById: userId, year: thisYear } }),
@@ -60,6 +58,7 @@ export async function getDashboardStats() {
       },
     }),
     prisma.seedling.count({ where: { createdById: userId, disposition: "SELECTED" } }),
+    prisma.breedingGoal.count({ where: { createdById: userId } }),
 
     getRecentActivity(userId),
   ])
